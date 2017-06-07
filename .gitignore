@@ -1,0 +1,7 @@
+build/
+devel/
+src/navibot_agent/DataSets/
+src/navibot_agent/NetFiles/
+
+src/CMakeLists.txt
+src/navibot_agent/*.pyc

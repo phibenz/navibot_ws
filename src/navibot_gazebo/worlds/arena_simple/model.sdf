@@ -1,0 +1,86 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+
+<model name="arena_simple">
+  <static>true</static>
+  <link name="wall1">
+    <pose>-10 0 1 0 0 0</pose>
+    <must_be_base_link>1</must_be_base_link>
+    <collision name="collision">
+       <geometry>
+         <box>
+           <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+        </box>
+       </geometry>
+     </collision>
+     <visual name="visual">
+       <cast_shadows>false</cast_shadows>
+       <geometry>
+         <box>
+          <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+          </box>
+      </geometry>
+     </visual>
+  </link>
+
+  <link name="wall2">
+    <pose>0 10 1 0 0 1.5707</pose>
+    <must_be_base_link>1</must_be_base_link>
+    <collision name="collision">
+       <geometry>
+         <box>
+           <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+        </box>
+       </geometry>
+     </collision>
+     <visual name="visual">
+       <cast_shadows>false</cast_shadows>
+       <geometry>
+         <box>
+          <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+          </box>
+      </geometry>
+     </visual>
+    </link>
+
+    <link name="wall3">
+    <pose>0 -10 1 0 0 1.5707</pose>
+    <must_be_base_link>1</must_be_base_link>
+    <collision name="collision">
+       <geometry>
+         <box>
+           <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+        </box>
+       </geometry>
+     </collision>
+     <visual name="visual">
+       <cast_shadows>false</cast_shadows>
+       <geometry>
+         <box>
+          <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+          </box>
+      </geometry>
+     </visual>
+    </link>
+
+    <link name="wall4">
+    <pose>10 0 1 0 0 0</pose>
+    <must_be_base_link>1</must_be_base_link>
+    <collision name="collision">
+       <geometry>
+         <box>
+           <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+        </box>
+       </geometry>
+     </collision>
+     <visual name="visual">
+       <cast_shadows>false</cast_shadows>
+       <geometry>
+         <box>
+          <size>0.1 20 2</size>  <!-- adjust this to whatever you want -->
+          </box>
+      </geometry>
+     </visual>
+    </link>
+</model>
+</sdf>
