@@ -13,8 +13,8 @@ import subprocess
 
 class environmentControl:
 	def __init__(self, pathRobot, pathGoal, pathLaunchfile):
-		self.pathRobot='/home/philipp/navibot_ws/src/navibot_description/urdf/navibot.xml'
-		self.pathGoal='/home/philipp/navibot_ws/src/navibot_description/urdf/goal.xml'
+		self.pathRobot=pathRobot
+		self.pathGoal=pathGoal
 		self.goalList=np.array([[0,0,0], 
 								[0,9,0], 
 								[0,-9,0],
@@ -70,9 +70,9 @@ class environmentControl:
 		if roscore_count > 0:
 		    os.system("killall -9 roscore")
 
-		if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
-		    print("I wait...")
-		    os.wait()
+		#if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
+		#    print("I wait...")
+		#    os.wait()
 
 	def pause(self):
 		self.pause_physics_client.call()

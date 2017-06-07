@@ -269,6 +269,7 @@ if __name__ == '__main__':
 		
 		#Update Epsilon save dataSet, network
 		if countTotalSteps % config.SIZE_EPOCH==0:
+			eC.pause()
 	        # Number of Epochs
 			epochCount+=1
 	      
@@ -283,6 +284,7 @@ if __name__ == '__main__':
 
 			saveNetwork(config.LOAD_NET_NUMBER + countTotalSteps, network) 
 			saveDataSet(config.LOAD_NET_NUMBER + countTotalSteps, dataSet)
-
+			eC.unpause()
+			
 		countTotalSteps+=1
 		countSteps+=1
