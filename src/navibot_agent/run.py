@@ -96,7 +96,7 @@ def updateRewardFile():
 
 class Configuration:
 
-    DATA_FOLDER=os.getcwd()
+    
     #------------------------
     # Agent/Network parameters:
     #------------------------
@@ -128,6 +128,7 @@ class Configuration:
     PATH_ROBOT = home + '/navibot_ws/src/navibot_description/urdf/navibot.xml'
     PATH_GOAL = home + '/navibot_ws/src/navibot_description/urdf/goal.xml'
     PATH_LAUNCHFILE = home + '/navibot_ws/src/navibot_gazebo/launch/navibot_world.launch'
+    DATA_FOLDER = home + '/navibot_ws/src/navibot_agent'
 
 	#------------------------
     # Data processor:
