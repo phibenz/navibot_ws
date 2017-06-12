@@ -2,6 +2,7 @@ build/
 devel/
 src/navibot_agent/DataSets/
 src/navibot_agent/NetFiles/
+src/navibot_agent/LearningFile/
 
 src/CMakeLists.txt
 src/navibot_agent/*.pyc

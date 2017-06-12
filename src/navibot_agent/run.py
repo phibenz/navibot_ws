@@ -9,44 +9,44 @@ import sys
 
 #---------FILE-MANAGEMENT------------#    
 
-def saveNetwork(numRounds, network):
+def saveNetwork(dataFolder, numRounds, network):
     print('...Writing Network to: \n' + \
-            config.DATA_FOLDER + '/NetFiles/' + 'Net_' + \
+            dataFolder + '/NetFiles/' + 'Net_' + \
             str(numRounds) + '.pkl')
-    netFile=open(config.DATA_FOLDER + '/NetFiles/' + 'Net_' + \
+    netFile=open(dataFolder + '/NetFiles/' + 'Net_' + \
                 str(numRounds) + '.pkl','wb')
     pickle.dump(network, netFile)
     netFile.close()
     print('Network written successfully.')
 
-def loadNetwork(numRounds):
+def loadNetwork(dataFolder, numRounds):
     #TODO: Add exceptions for files which are nonexistent
     print('...Reading Network from: \n' + \
-        config.DATA_FOLDER + '/NetFiles/' + 'Net_' + \
+        dataFolder + '/NetFiles/' + 'Net_' + \
         str(numRounds) + '.pkl')
-    netFile=open(config.DATA_FOLDER + '/NetFiles/' + 'Net_'+ \
+    netFile=open(dataFolder + '/NetFiles/' + 'Net_'+ \
                 str(numRounds) + '.pkl', 'rb')
     network=pickle.load(netFile)
     netFile.close()
     print('Network read succesfully.')
     return network
 
-def saveDataSet(numRounds, dataset):
+def saveDataSet(dataFolder, numRounds, dataset):
     print('...Writing DataSet to: \n' + \
-            config.DATA_FOLDER + '/DataSets/' + 'DataSet_' + \
+            dataFolder + '/DataSets/' + 'DataSet_' + \
             str(numRounds) + '.pkl')
-    dataFile=open(config.DATA_FOLDER + '/DataSets/' + 'DataSet_' + \
+    dataFile=open(dataFolder + '/DataSets/' + 'DataSet_' + \
                 str(numRounds) + '.pkl','wb')
     pickle.dump(dataSet, dataFile)
     dataFile.close()
     print('DataSet written successfully.')
 
-def loadDataSet(numRounds):
+def loadDataSet(dataFolder, numRounds):
     #TODO: Add exceptions for files which are nonexistent
     print('...Reading DataSet from: \n' + \
-        config.DATA_FOLDER + '/DataSets/' + 'DataSet_' + \
+        dataFolder + '/DataSets/' + 'DataSet_' + \
         str(numRounds) + '.pkl')
-    dataFile=open(config.DATA_FOLDER + '/DataSets/' + 'DataSet_'+ \
+    dataFile=open(dataFolder + '/DataSets/' + 'DataSet_'+ \
                 str(numRounds) + '.pkl', 'rb')
     dataSet=pickle.load(dataFile)
     dataFile.close()
@@ -67,19 +67,30 @@ def trainNetwork(dataSet, network, batchSize):
 	                        batchRewards, 
 	                        batchTerminals)
 	return loss
-"""
-def openLearningFile():
-    learningFile=open(config.DATA_FOLDER + '/LearningFile/' + \
+
+def userAction():
+	while True:
+		action = input()
+		if action== 0 or action== 1 or action== 2 or action== 3 :
+			return action
+		else: 
+			print('Invalid input Options: 1; 2; 3; 4 Try again: ')
+
+def openLearningFile(dataFolder):
+    learningFile=open(dataFolder + '/LearningFile/' + \
                         'learning.csv','w')
     learningFile.write('mean Loss, Epoch\n')
     learningFile.flush()
+    learningFile.close()
 
-def updateLearningFile():
-    out="{},{}\n".format(numpy.mean(lossAverages),
-                                    epochCount)
-    learningFile.write(out)
-    learningFile.flush()
-
+def updateLearningFile(dataFolder, lossAverages, epochCount):
+	learningFile=open(dataFolder + '/LearningFile/' + \
+                        'learning.csv','a')
+	out="{},{}\n".format(np.mean(lossAverages), epochCount)
+	learningFile.write(out)
+	learningFile.flush()
+	learningFile.close()
+"""
 def openRewardFile():
     rewardFile=open(config.DATA_FOLDER + '/LearningFile/' + \
                         'reward.csv','w')
@@ -106,7 +117,7 @@ class Configuration:
     REPLAY_MEMORY_SIZE= 10000000
     RNG= np.random.RandomState()
     PHI_LENGTH=4
-    STATE_SIZE=9
+    STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
     DISCOUNT=0.99
@@ -116,7 +127,7 @@ class Configuration:
     RMS_EPSILON=0.01
     UPDATE_RULE='deepmind_rmsprop'
     BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER=190000 #100000000 #50000000 
+    LOAD_NET_NUMBER= 0#190000 #100000000 #50000000 
     SIZE_EPOCH=10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     FREEZE_INTERVAL=5000
@@ -143,14 +154,13 @@ class Configuration:
     VEL_CURVE=0.1
     NUM_STEPS=5000
 
-if __name__ == '__main__':
-	
+def main():
 	sys.setrecursionlimit(2000)
 
 	config=Configuration()
 	if config.LOAD_NET_NUMBER>0:
-		dataSet=loadDataSet(config.LOAD_NET_NUMBER)
-		network=loadNetwork(config.LOAD_NET_NUMBER)
+		dataSet=loadDataSet(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
+		network=loadNetwork(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
 		countTotalSteps = config.LOAD_NET_NUMBER
 	else:
 		network=DeepQLearner(config.STATE_SIZE,
@@ -173,13 +183,14 @@ if __name__ == '__main__':
 	                    config.RNG)
 		countTotalSteps = 0
 
+		openLearningFile(config.DATA_FOLDER)
+
 	eC=environmentControl(config.PATH_ROBOT, 
     					  config.PATH_GOAL,
     					  config.PATH_LAUNCHFILE)
-	#eC.spawn(config.ROBOT_NAME)
+	eC.spawn(config.ROBOT_NAME)
 	eC.spawnGoal()
 	eC.setRandomModelState(config.ROBOT_NAME)
-	eC.setRandomModelState('goal')
 	#eC.pause()
 
 	dP=dataProcessor(eC, 
@@ -222,21 +233,24 @@ if __name__ == '__main__':
 
 	while not quit:
 		if countTotalSteps%1000==0:
+			updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
+			lossAverages=np.empty([0])
 			print(countTotalSteps)
 
 		state,reward=dP.getStateReward()
 		phi=dataSet.phi(state)
 		#print('phi: ', phi)
-		action=network.choose_action(phi, epsilon)
-		#action=np.random.randint(config.ACTION_SIZE)
+		#action=network.choose_action(phi, epsilon)
+		action=np.random.randint(config.ACTION_SIZE)
+		#action=userAction()
 		#time.sleep(0.5)
 		dP.action(action)
 		#print('state: ', state)
 		#print('reward: ', reward)
 		#print('action: ', action)
-
+		
 		# Check every 100 steps if is Flipped and Goal was reached
-		if countSteps % 20 == 0:
+		if countSteps % 5 == 0:
 			if dP.isGoal:
 				countSteps = 1
 				eC.setRandomModelState(config.ROBOT_NAME)
@@ -249,8 +263,6 @@ if __name__ == '__main__':
 				reward-=1
 				print('Flipped!')
 
-			
-
 		# After NUM_STEPS the chance is over
 		if countSteps % config.NUM_STEPS == 0:
 			countSteps = 1
@@ -259,16 +271,15 @@ if __name__ == '__main__':
 			eC.setRandomModelState('goal')
 			print('Your chance is over! Try again ...')
 
-
 		dataSet.addSample(state,
 						  action,
 						  reward,
 						  dP.isGoal)
 		
-		
 		# Training
 		if countTotalSteps>config.REPLAY_START_SIZE:
 			loss=trainNetwork(dataSet, network, config.BATCH_SIZE)
+			#print('Loss', loss)
             # count How many trainings had been done
 			batchCount+=1
             # add loss to lossAverages
@@ -291,9 +302,14 @@ if __name__ == '__main__':
 			print('Epsilon updated to: ', epsilon)
 			
 
-			saveNetwork(countTotalSteps, network) 
-			saveDataSet(countTotalSteps, dataSet)
+			saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+			saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 			eC.unpause()
 			
 		countTotalSteps+=1
 		countSteps+=1
+
+
+
+if __name__ == '__main__':
+	main()

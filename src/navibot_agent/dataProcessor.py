@@ -77,6 +77,11 @@ class dataProcessor:
 					
 					robotPosition,robotOrientation=self.getRobotPosOri()
 					goalPosition=self.getGoalPos()
+					state[0,7:11]=[robotPosition[0]/10, robotPosition[1]/10, goalPosition[0]/10, goalPosition[1]/10]
+					#state[0,8]=robotPosition[1]/10
+					#state[0,9]=goalPosition[0]/10
+					#state[0,10]=goalPosition[1]/10
+					'''
 					state[0,7]=(np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2))/np.sqrt(800)
 					opposite=(goalPosition[0]-robotPosition[0])
 					adjacent=(goalPosition[1]-robotPosition[1])
@@ -86,8 +91,11 @@ class dataProcessor:
 						phi-=np.pi/2
 					elif adjacent < 0 and opposite > 0:
 						phi+=np.pi/2
+					print('roboAngle', robotOrientation[2]*180)
+					print('phi', phi*180/np.pi)
 					state[0,8]=phi/np.pi
-					reward=self.getReward(robotPosition,robotOrientation,goalPosition)
+					'''
+					reward=self.getReward(robotPosition, goalPosition)
 				counter+=1
 				lastTime=time
 		#self.envC.pause()
@@ -101,7 +109,7 @@ class dataProcessor:
 		roboPO=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.robotIndex]
 
 		robotPosition=np.array((roboPO.position.x, roboPO.position.y, roboPO.position.z))
-		robotOrientation=np.array((roboPO.orientation.x, roboPO.orientation.y, roboPO.orientation.z))
+		robotOrientation=np.array((roboPO.orientation.x, roboPO.orientation.y, roboPO.orientation.z, roboPO.orientation.w))
 		#if wasPaused:
 		#	self.envC.pause()
 		return robotPosition, robotOrientation
@@ -110,13 +118,12 @@ class dataProcessor:
 
 		goalPose=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.goalIndex]
 		goalPos=np.array((goalPose.position.x, goalPose.position.y, goalPose.position.z))
-		
 		return goalPos
 
 	def isPaused(self):
 		return self.envC.physicsProp_client.call().pause
 
-	def getReward(self, robotPosition, robotOrientation, goalPosition):
+	def getReward(self, robotPosition, goalPosition):
 		leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState)
 		rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState)
 		chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState)
@@ -139,14 +146,17 @@ class dataProcessor:
 		goalReward=0
 		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
 			print('leftWheelBumber GOAL!')
+			collisionReward = 0
 			goalReward = 1
 			self.isGoal=True
 		elif len([rightWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(rightWheelBump.states))])>0:
 			print('rightWheelBump GOAL!')
+			collisionReward = 0
 			goalReward = 1
 			self.isGoal=True
 		elif len(np.where([chassisBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(chassisBump.states))])[0])>0:
 			print('chassis GOAL!')
+			collisionReward = 0
 			goalReward = 1
 			self.isGoal=True
 		else:

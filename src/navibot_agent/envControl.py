@@ -31,10 +31,13 @@ class environmentControl:
 		subprocess.Popen("roscore")
 		print('roscore launched')
 		time.sleep(5)
-		#rospy.init_node('gym', anonymous=True)
+		
 		subprocess.Popen(["roslaunch", pathLaunchfile])
 		print('Gazebo launched')
 		time.sleep(5)
+
+		# Get Gzserver PID
+		# self.gzserver_pid = int(subprocess.check_output(["pidof","-s","gzserver"]))
 		
 		rospy.loginfo('Waiting for service \"/gazebo/pause_physics\"... ')
 		rospy.wait_for_service('/gazebo/pause_physics')
@@ -46,8 +49,8 @@ class environmentControl:
 		
 		self.pause_physics_client=rospy.ServiceProxy('/gazebo/pause_physics', Empty)
 		self.unpause_physics_client=rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
-		self.reset_simulation_client=rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
-		self.reset_world_client=rospy.ServiceProxy('/gazebo/reset_world', Empty)
+		#self.reset_simulation_client=rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
+		#self.reset_world_client=rospy.ServiceProxy('/gazebo/reset_world', Empty)
 		self.spawn_model_client = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
 		self.set_model_state_client = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 		self.physicsProp_client=rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
@@ -70,32 +73,32 @@ class environmentControl:
 		if roscore_count > 0:
 		    os.system("killall -9 roscore")
 
-		tmp = os.popen("ps -Af").read()
-		gzclient_count = tmp.count('gzclient')
-		gzserver_count = tmp.count('gzserver')
-		roscore_count = tmp.count('roscore')
-		rosmaster_count = tmp.count('rosmaster')
-
+		time.sleep(3)
+		'''
 		if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
 		    print("I wait...")
 		    os.wait()
+		'''
 
 	def pause(self):
 		self.pause_physics_client.call()
 	
 	def unpause(self):
 		self.unpause_physics_client.call()
-	
+	'''
 	def reset_world(self):
 		self.reset_world_client.call()
 
 	def reset_sim(self):
 		self.reset_simulation_client.call()
-
+	'''
 	def spawn(self, robotName):
+		idx=np.random.randint(len(self.goalList)-1)
+		goalPos=self.goalList[idx]
+		
 		initial_pose = Pose()
-		initial_pose.position.x = np.random.random()*2-1
-		initial_pose.position.y = np.random.random()*2-1
+		initial_pose.position.x = goalPos[0]
+		initial_pose.position.y = goalPos[1]
 		initial_pose.position.z = 0.5
 		
 		#initial_pose.orientation.x=0.
@@ -131,12 +134,16 @@ class environmentControl:
 		state.reference_frame='world'
 		state.pose.position.x = goalPos[0]
 		state.pose.position.y = goalPos[1]
-		state.pose.position.z = 0.5
+		if name == 'goal':
+			state.pose.position.z = 2.
+		else:
+			state.pose.position.z = 0.5
 
 		#state.pose.orientation.x = 0
-		state.pose.orientation.y = 0.
-		state.pose.orientation.z = np.random.random()*2 -1
-		state.pose.orientation.w = np.random.random()*2-1
+		#state.pose.orientation.y = 0.
+		if name != 'goal': 
+			state.pose.orientation.z = np.random.random()*2 -1
+			state.pose.orientation.w = np.random.random()*2-1
 		self.set_model_state_client(state)
 
 	def getGoallist(self):

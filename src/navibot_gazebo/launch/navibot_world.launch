@@ -4,8 +4,8 @@
   <arg name="world" default="empty"/> 
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="true"/>
-  <arg name="gui" default="false"/>
-  <arg name="headless" default="true"/>
+  <arg name="gui" default="true"/>
+  <arg name="headless" default="false"/>
   <arg name="debug" default="false"/>
   
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -18,14 +18,14 @@
   </include>
 
   
-  <param name="robot_description" 
-         command="$(find xacro)/xacro.py '$(find navibot_description)/urdf/navibot.xml'"/>
+  <!--param name="robot_description" 
+         command="$(find xacro)/xacro.py '$(find navibot_description)/urdf/navibot.xml'"/-->
   <!--param name="robot_description" command="'$(find navibot_description)/urdf/navibot.xml'"/-->
 
 
-  <node name="navibot_spawn" 
+  <!--node name="navibot_spawn" 
         pkg="gazebo_ros" 
         type="spawn_model" 
         output="screen" 
-        args="-urdf -param robot_description -model navibot" />
+        args="-urdf -param robot_description -model navibot" /-->
 </launch>
