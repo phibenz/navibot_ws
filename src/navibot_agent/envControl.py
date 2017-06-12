@@ -70,9 +70,15 @@ class environmentControl:
 		if roscore_count > 0:
 		    os.system("killall -9 roscore")
 
-		#if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
-		#    print("I wait...")
-		#    os.wait()
+		tmp = os.popen("ps -Af").read()
+		gzclient_count = tmp.count('gzclient')
+		gzserver_count = tmp.count('gzserver')
+		roscore_count = tmp.count('roscore')
+		rosmaster_count = tmp.count('rosmaster')
+
+		if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
+		    print("I wait...")
+		    os.wait()
 
 	def pause(self):
 		self.pause_physics_client.call()

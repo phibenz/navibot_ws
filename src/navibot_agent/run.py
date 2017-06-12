@@ -100,9 +100,9 @@ class Configuration:
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= 1.
+    EPSILON_START= .95
     EPSILON_MIN= 0.1
-    EPSILON_DECAY=0.1
+    EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
     RNG= np.random.RandomState()
     PHI_LENGTH=4
@@ -116,10 +116,11 @@ class Configuration:
     RMS_EPSILON=0.01
     UPDATE_RULE='deepmind_rmsprop'
     BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER=0 #100000000 #50000000 
-    SIZE_EPOCH=100000
+    LOAD_NET_NUMBER=190000 #100000000 #50000000 
+    SIZE_EPOCH=10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-    FREEZE_INTERVAL=10000
+    FREEZE_INTERVAL=5000
+
 
 	#------------------------
     # Environment Control:
@@ -147,24 +148,30 @@ if __name__ == '__main__':
 	sys.setrecursionlimit(2000)
 
 	config=Configuration()
-	network=DeepQLearner(config.STATE_SIZE,
-                        config.ACTION_SIZE,
-                        config.PHI_LENGTH,
-                        config.BATCH_SIZE,
-                        config.DISCOUNT,
-                        config.RHO,
-                        config.MOMENTUM,
-                        config.LEARNING_RATE,
-                        config.RMS_EPSILON,
-                        config.RNG,
-                        config.UPDATE_RULE,
-                        config.BATCH_ACCUMULATOR,
-                        config.FREEZE_INTERVAL)
-    # Initialize DataSet
-	dataSet=DataSet(config.STATE_SIZE,
-                    config.REPLAY_MEMORY_SIZE,
-                    config.PHI_LENGTH,
-                    config.RNG)
+	if config.LOAD_NET_NUMBER>0:
+		dataSet=loadDataSet(config.LOAD_NET_NUMBER)
+		network=loadNetwork(config.LOAD_NET_NUMBER)
+		countTotalSteps = config.LOAD_NET_NUMBER
+	else:
+		network=DeepQLearner(config.STATE_SIZE,
+	                        config.ACTION_SIZE,
+	                        config.PHI_LENGTH,
+	                        config.BATCH_SIZE,
+	                        config.DISCOUNT,
+	                        config.RHO,
+	                        config.MOMENTUM,
+	                        config.LEARNING_RATE,
+	                        config.RMS_EPSILON,
+	                        config.RNG,
+	                        config.UPDATE_RULE,
+	                        config.BATCH_ACCUMULATOR,
+	                        config.FREEZE_INTERVAL)
+	    # Initialize DataSet
+		dataSet=DataSet(config.STATE_SIZE,
+	                    config.REPLAY_MEMORY_SIZE,
+	                    config.PHI_LENGTH,
+	                    config.RNG)
+		countTotalSteps = 0
 
 	eC=environmentControl(config.PATH_ROBOT, 
     					  config.PATH_GOAL,
@@ -191,7 +198,7 @@ if __name__ == '__main__':
 	lastReward=0
 	lastAction=0
 
-	countTotalSteps=0
+	
 	countSteps=0
 	batchCount=0
 	lossAverages=np.empty([0])
@@ -278,13 +285,14 @@ if __name__ == '__main__':
 	        #updateLearningFile()
 	      
 	        # Update Epsilon
-			epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
-			print('Epsilon updated to: ', epsilon)
 			if (epsilon - epsilonRate) < config.EPSILON_MIN:
 				quit=True
+			epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
+			print('Epsilon updated to: ', epsilon)
+			
 
-			saveNetwork(config.LOAD_NET_NUMBER + countTotalSteps, network) 
-			saveDataSet(config.LOAD_NET_NUMBER + countTotalSteps, dataSet)
+			saveNetwork(countTotalSteps, network) 
+			saveDataSet(countTotalSteps, dataSet)
 			eC.unpause()
 			
 		countTotalSteps+=1
