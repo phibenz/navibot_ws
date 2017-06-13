@@ -3,6 +3,7 @@ devel/
 src/navibot_agent/DataSets/
 src/navibot_agent/NetFiles/
 src/navibot_agent/LearningFile/
+src/navibot_agent/Checkpoints/
 
 src/CMakeLists.txt
 src/navibot_agent/*.pyc

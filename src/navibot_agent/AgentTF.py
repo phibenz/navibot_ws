@@ -1,78 +1,99 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.layers as initializer
 
 class AgentTF:
-	def __init__(state_size, phi_length, action_size, hidden_layers):
-		
-		self.state_size=state_size
-		self.phi_length=phi_length
-		self.action_size=action_size
-		self.hidden_layers=hidden_layers
+    def __init__(self, state_size, phi_length, action_size, hidden_layers, batch_size, tau, gamma):
 
-		# tensorflow
-		tf.reset_default_graph()
 
-		self.mainQN = DQN("mainQN", self.state_size*self.phi_length, self.action_size, 
-								self.hidden_layers, self.phi_length)
-	    self.targetQN = DQN("targetQN", self.state_size*self.phi_length, self.action_size,
-	    						self.hidden_layers, self.phi_length)
+        self.state_size=state_size
+        self.phi_length=phi_length
+        self.action_size=action_size
+        self.hidden_layers=hidden_layers
+        self.batch_size=batch_size
+        self.tau=tau
+        self.gamma=gamma
 
-	    self.trainables = tf.trainable_variables()
-	    self.target_ops = self.set_target_graph_vars(trainables, tau)
+        # tensorflow
+        tf.reset_default_graph()
 
-	    #START
-	    init = tf.global_variables_initializer()
-	    self.sess = tf.Session()
-	    self.sess.run(init)
-	    # Set the target network to be equal to the primary network
-	    self.update_target_graph(self.target_ops, self.sess)
+        self.mainQN = DQN("mainQN", self.state_size*self.phi_length, self.action_size, 
+                        self.hidden_layers, self.phi_length)
+        self.targetQN = DQN("targetQN", self.state_size*self.phi_length, self.action_size,
+                            self.hidden_layers, self.phi_length)
 
-	""" Auxiliary Methods """
-	# Originally called updateTargetGraph
-	def set_target_graph_vars(self, tfVars, tau):
-	    total_vars = len(tfVars)
-	    op_holder = []
+        self.trainables = tf.trainable_variables()
+        self.target_ops = self.set_target_graph_vars(self.trainables, self.tau)
+        self.saver = tf.train.Saver()
 
-	    for idx,var in enumerate(tfVars[0:total_vars//2]): # Select the first half of the variables (mainQ net)
-	        op_holder.append( tfVars[idx+total_vars//2].assign((var.value()*tau)+((1-tau)*tfVars[idx+total_vars//2].value())))
+        #START
+        init = tf.global_variables_initializer()
+        self.sess = tf.Session()
+        self.sess.run(init)
+        # Set the target network to be equal to the primary network
+        self.update_target_graph(self.target_ops)
 
-	    return op_holder
-	# Originally called updateTarget
-	def update_target_graph(self, op_holder):
-	    for op in op_holder:
-	        self.sess.run(op)
+    """ Auxiliary Methods """
+    # Originally called updateTargetGraph
+    def set_target_graph_vars(self, tfVars, tau):
+        total_vars = len(tfVars)
+        op_holder = []
+
+        for idx,var in enumerate(tfVars[0:total_vars//2]): # Select the first half of the variables (mainQ net)
+            op_holder.append( tfVars[idx+total_vars//2].assign((var.value()*tau)+((1-tau)*tfVars[idx+total_vars//2].value())))
+
+        return op_holder
+    # Originally called updateTarget
+    def update_target_graph(self, op_holder):
+        for op in op_holder:
+            self.sess.run(op)
 
     def getAction(self, state, epsilon):
         # State has to be np.array(44, 1)
-        if np.size(state) != (44,1):
-            raise ValueError
+        #if np.size(state) != (44,):
+        #    raise ValueError
         if np.random.rand(1) < epsilon:
             action = np.random.randint(0, self.action_size)
         else:
-            action = self.sess.run(self.mainQN.predict,feed_dict={self.mainQN.input:[state]})[0]
+            action = self.sess.run(self.mainQN.predict,feed_dict={self.mainQN.input:state})[0]
+        return action
 
-    def train(self, train_batch):
-    	# Train_batch = [s,a,r,s1,d]
-    	#Perform the Double-DQN update to the target Q-values
-		Q1 = self.sess.run(self.mainQN.predict,
-		              feed_dict={self.mainQN.input:np.vstack(train_batch[:,3])})
+    def train(self, states, actions, rewards, nextStates, terminals):
+        # Train_batch = [s,a,r,s1,d]
+        #Perform the Double-DQN update to the target Q-values
+        Q1 = self.sess.run(self.mainQN.predict,
+                      feed_dict={self.mainQN.input:np.vstack(nextStates)})
 
-		Q2 = self.sess.run(self.targetQN.Qout,
-		              feed_dict={self.targetQN.input:np.vstack(train_batch[:,3])})
+        Q2 = self.sess.run(self.targetQN.Qout,
+                      feed_dict={self.targetQN.input:np.vstack(nextStates)})
 
-		end_multiplier = -(train_batch[:,4] - 1)
-		doubleQ = Q2[range(self.batch_size),Q1]
-		targetQ = train_batch[:,2] + (self.gamma*doubleQ*end_multiplier)
+        end_multiplier = -(terminals - 1)
+        doubleQ = Q2[range(self.batch_size),Q1]
+        targetQ = rewards + (self.gamma*doubleQ*end_multiplier)
 
-		# Update the network with our target values.
-		_ = sess.run(self.mainQN.updateModel,
-		             feed_dict={self.mainQN.input:np.vstack(train_batch[:,0]),
-		             self.mainQN.targetQ:targetQ,
-		             self.mainQN.actions:train_batch[:,1]})
+        # Update the network with our target values.
+        _,loss = self.sess.run([self.mainQN.updateModel, self.mainQN.loss],
+                     feed_dict={self.mainQN.input:np.vstack(states),
+                     self.mainQN.targetQ:targetQ,
+                     self.mainQN.actions:actions})
 
-		# Set the target network to be equal to the primary
-		self.update_target_graph(self.target_ops, self.sess)
+        # Set the target network to be equal to the primary
+        self.update_target_graph(self.target_ops)
+        return loss
 
+
+
+    def close(self):
+        self.sess.close()
+
+
+    def restore_model(self, path):
+        ckpt = tf.train.get_checkpoint_state(path+'/Checkpoints/')
+        self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+        print 'Loaded checkpoint: ', ckpt
+
+    def save_model(self, num_episode, path):
+        self.saver.save(self.sess, path+'/Checkpoints/model-'+str(num_episode)+'.cptk')
 
 class DQN():
     def __init__(self, net_name, state_size, action_size, hiddens, num_frames):
