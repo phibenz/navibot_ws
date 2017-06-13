@@ -31,7 +31,7 @@ def loadNetwork(dataFolder, numRounds):
     print('Network read succesfully.')
     return network
 
-def saveDataSet(dataFolder, numRounds, dataset):
+def saveDataSet(dataFolder, numRounds, dataSet):
     print('...Writing DataSet to: \n' + \
             dataFolder + '/DataSets/' + 'DataSet_' + \
             str(numRounds) + '.pkl')
@@ -127,7 +127,7 @@ class Configuration:
     RMS_EPSILON=0.01
     UPDATE_RULE='deepmind_rmsprop'
     BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER= 0#190000 #100000000 #50000000 
+    LOAD_NET_NUMBER= 10000 #100000000 #50000000 
     SIZE_EPOCH=10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     FREEZE_INTERVAL=5000
@@ -301,7 +301,6 @@ def main():
 			epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
 			print('Epsilon updated to: ', epsilon)
 			
-
 			saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
 			saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 			eC.unpause()

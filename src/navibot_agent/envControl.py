@@ -73,7 +73,7 @@ class environmentControl:
 		if roscore_count > 0:
 		    os.system("killall -9 roscore")
 
-		time.sleep(3)
+		time.sleep(1)
 		'''
 		if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
 		    print("I wait...")
