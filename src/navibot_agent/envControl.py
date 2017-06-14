@@ -36,6 +36,8 @@ class environmentControl:
 		print('Gazebo launched')
 		time.sleep(5)
 
+
+		rospy.init_node('Navibot_node', anonymous=True)
 		# Get Gzserver PID
 		# self.gzserver_pid = int(subprocess.check_output(["pidof","-s","gzserver"]))
 		

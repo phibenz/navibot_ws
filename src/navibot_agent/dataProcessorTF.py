@@ -2,8 +2,6 @@ import rospy
 import time
 import numpy as np
 
-from envControl import environmentControl
-
 from std_msgs.msg import Float64
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import LaserScan
@@ -15,9 +13,6 @@ from std_srvs.srv import Empty
 
 class dataProcessor:
 	def __init__(self, environmentController, robotName, updatesPerStep, phiLength, stateSize, numSensorVal, sensorRangeMax, sensorRangeMin, vel, vel_curve):
-
-		rospy.init_node('dataProcessor', anonymous=True)
-
 		self.envC=environmentController
 
 		self.robotName = robotName

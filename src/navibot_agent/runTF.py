@@ -70,11 +70,10 @@ def updateRewardFile():
 
 class Configuration:
 
-    
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= .95
+    EPSILON_START= 1.
     EPSILON_MIN= 0.1
     EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
@@ -83,17 +82,9 @@ class Configuration:
     STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
-    DISCOUNT=0.99
-    RHO=0.95 #RMS_DECAY
-    MOMENTUM=-1
-    LEARNING_RATE=0.0001
-    RMS_EPSILON=0.01
-    UPDATE_RULE='deepmind_rmsprop'
-    BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER= 400 #100000000 #50000000 
-    SIZE_EPOCH=10000
+    LOAD_NET_NUMBER= 0 #100000000 #50000000 
+    SIZE_EPOCH=5000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-    FREEZE_INTERVAL=5000
     HIDDEN_LAYERS=[100, 100, 100]
     TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
     GAMMA=0.99
