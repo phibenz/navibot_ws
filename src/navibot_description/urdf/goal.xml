@@ -9,7 +9,7 @@
     <collision name="goal_collision">
        <geometry>
         <cylinder>
-          <radius>0.1</radius>
+          <radius>0.4</radius>
           <length>4</length>
         </cylinder>
        </geometry>
@@ -18,7 +18,7 @@
        <cast_shadows>false</cast_shadows>
        <geometry>
          <cylinder>
-          <radius>0.1</radius>
+          <radius>0.4</radius>
           <length>4</length>
         </cylinder>
       </geometry>

@@ -17,7 +17,6 @@ class environmentControl:
 		self.pathGoal=pathGoal
 		self.goalList=np.array([[0,0,0], 
 								[0,9,0], 
-								[0,-9,0],
 								[9,0,0],
 								[-9,0,0],
 								[9,9,0],
@@ -28,14 +27,13 @@ class environmentControl:
 		
 		self._close()
 
-		subprocess.Popen("roscore")
-		print('roscore launched')
-		time.sleep(5)
+		#subprocess.Popen("roscore")
+		#print('roscore launched')
+		#time.sleep(5)
 		
 		subprocess.Popen(["roslaunch", pathLaunchfile])
 		print('Gazebo launched')
 		time.sleep(5)
-
 
 		rospy.init_node('Navibot_node', anonymous=True)
 		# Get Gzserver PID
@@ -114,12 +112,9 @@ class environmentControl:
 		self.spawn_model_client(robotName, data, "naviBotNameSpace", initial_pose, "world")
 
 	def spawnGoal(self):
-		idx=np.random.randint(len(self.goalList)-1)
-		goalPos=self.goalList[idx]
-		
 		goal_pose = Pose()
-		goal_pose.position.x=goalPos[0]
-		goal_pose.position.y=goalPos[1]
+		goal_pose.position.x=  0
+		goal_pose.position.y= -9
 		goal_pose.position.z=2.0
 
 		with open(self.pathGoal, 'r') as f:
@@ -134,11 +129,14 @@ class environmentControl:
 		state=ModelState()
 		state.model_name=name
 		state.reference_frame='world'
-		state.pose.position.x = goalPos[0]
-		state.pose.position.y = goalPos[1]
+
 		if name == 'goal':
+			state.pose.position.x = 0
+			state.pose.position.y = -9
 			state.pose.position.z = 2.
 		else:
+			state.pose.position.x = goalPos[0]
+			state.pose.position.y = goalPos[1]
 			state.pose.position.z = 0.5
 
 		#state.pose.orientation.x = 0

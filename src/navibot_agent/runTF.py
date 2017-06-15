@@ -218,6 +218,7 @@ def main():
 				reward-=1
 				print('Flipped!')
 
+		reward-=countSteps/config.NUM_STEPS # Reward that every step costs a little bit more
 		# After NUM_STEPS the chance is over
 		if countSteps % config.NUM_STEPS == 0:
 			countSteps = 1
