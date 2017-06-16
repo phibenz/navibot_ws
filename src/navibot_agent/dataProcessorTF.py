@@ -12,14 +12,15 @@ from std_srvs.srv import Empty
 
 
 class dataProcessor:
-	def __init__(self, environmentController, robotName, updatesPerStep, phiLength, stateSize, numSensorVal, sensorRangeMax, sensorRangeMin, vel, vel_curve):
+	def __init__(self, environmentController, robotName, phiLength, stateSize, numSensorVal, sensorRangeMax, sensorRangeMin, vel, vel_curve, update_time, speed_up):
 		self.envC=environmentController
 
 		self.robotName = robotName
 		self.robotIndex, self.goalIndex = self.getIndeces()
-		self.updatesPerStep=updatesPerStep 
+		self.update_time=update_time
+		self.speed_up=speed_up
+		#self.updatesPerStep=updatesPerStep 
 		self.phiLength=phiLength
-		self.deltaStep=int(self.updatesPerStep/(self.phiLength-1))
 		self.isGoal=False
 
 		self.stateSize=stateSize # TODO maybe as input
@@ -56,14 +57,27 @@ class dataProcessor:
 		return robotIndex, goalIndex
 
 	def getState(self):
+		time.sleep(self.update_time/self.speed_up)
+		state=np.zeros((1, self.stateSize))
+		laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan).ranges)
+		laserData[np.where(np.isinf(laserData))[0]]=0.
+		state[0,0:self.numSensorVal]=(laserData-self.SensorRangeMin)/(self.SenorRangeMax-self.SensorRangeMin)
+		
+		robotPosition,robotOrientation=self.getRobotPosOri()
+		goalPosition=self.getGoalPos()
+		state[0,7:11]=[robotPosition[0]/10, robotPosition[1]/10, goalPosition[0]/10, goalPosition[1]/10]
+
 		#self.envC.unpause()
+		'''
 		time=rospy.wait_for_message("/clock", Clock).clock
 		lastTime=time
 		counter=0
 		state=np.zeros((1, self.stateSize))
 		while(counter<=self.updatesPerStep):
 			time=rospy.wait_for_message("/clock", Clock).clock
+			print time
 			if lastTime<time:
+
 				if counter==self.updatesPerStep:
 					laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan).ranges)
 					laserData[np.where(np.isinf(laserData))[0]]=0.
@@ -75,7 +89,8 @@ class dataProcessor:
 					#state[0,8]=robotPosition[1]/10
 					#state[0,9]=goalPosition[0]/10
 					#state[0,10]=goalPosition[1]/10
-					'''
+		'''
+		'''
 					state[0,7]=(np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2))/np.sqrt(800)
 					opposite=(goalPosition[0]-robotPosition[0])
 					adjacent=(goalPosition[1]-robotPosition[1])
@@ -88,9 +103,9 @@ class dataProcessor:
 					print('roboAngle', robotOrientation[2]*180)
 					print('phi', phi*180/np.pi)
 					state[0,8]=phi/np.pi
-					'''
-				counter+=1
-				lastTime=time
+		'''
+		#		counter+=1
+		#		lastTime=time
 		#self.envC.pause()
 		return state
 

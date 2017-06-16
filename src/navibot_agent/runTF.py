@@ -102,13 +102,16 @@ class Configuration:
     # Data processor:
     #------------------------
     ROBOT_NAME='navibot'
-    UPDATES_PER_STEP=50
+    
     NUM_SENSOR_VAL=7
     SENSOR_RANGE_MAX=np.sqrt(800.)
     SENSOR_RANGE_MIN=0.
-    VEL=0.2
-    VEL_CURVE=0.1
+    VEL=0.5
+    VEL_CURVE=0.25
     NUM_STEPS=5000
+
+    UPDATE_TIME=1
+    SPEED_UP=50 # 
 
 def main():
 	sys.setrecursionlimit(2000)
@@ -147,14 +150,15 @@ def main():
 
 	dP=dataProcessor(eC, 
 					 config.ROBOT_NAME,
-					 config.UPDATES_PER_STEP,
 					 config.PHI_LENGTH,
 					 config.STATE_SIZE,
 					 config.NUM_SENSOR_VAL,
 					 config.SENSOR_RANGE_MAX,
 					 config.SENSOR_RANGE_MIN,
 					 config.VEL,
-					 config.VEL_CURVE)
+					 config.VEL_CURVE,
+					 config.UPDATE_TIME,
+					 config.SPEED_UP)
 
 
 	lastState=np.zeros((1,config.STATE_SIZE))
@@ -197,6 +201,7 @@ def main():
 		phi=dataSet.phi(lastState)
 		action=agentTF.getAction(phi, epsilon)
 		dP.action(action)
+		eC.unpause()
 		state=dP.getState()
 		reward=dP.getReward()
 		#print('phi: ', phi)
@@ -218,7 +223,7 @@ def main():
 				reward-=1
 				print('Flipped!')
 
-		reward-=countSteps/config.NUM_STEPS # Reward that every step costs a little bit more
+		reward-=0.01 # Reward that every step costs a little bit
 		# After NUM_STEPS the chance is over
 		if countSteps % config.NUM_STEPS == 0:
 			countSteps = 1
@@ -226,6 +231,8 @@ def main():
 			eC.setRandomModelState(config.ROBOT_NAME)
 			eC.setRandomModelState('goal')
 			print('Your chance is over! Try again ...')
+
+		eC.pause()
 
 		dataSet.addSample(lastState,
 						  action,
@@ -247,7 +254,6 @@ def main():
 		
 		#Update Epsilon save dataSet, network
 		if countTotalSteps % config.SIZE_EPOCH==0:
-			eC.pause()
 	        # Number of Epochs
 			epochCount+=1
 	      
@@ -262,7 +268,6 @@ def main():
 			
 			agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
 			saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
-			eC.unpause()
 		lastState=state
 		countTotalSteps+=1
 		countSteps+=1
