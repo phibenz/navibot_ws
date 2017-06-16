@@ -73,7 +73,7 @@ class Configuration:
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= 1.
+    EPSILON_START= 0.25
     EPSILON_MIN= 0.1
     EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
@@ -82,7 +82,7 @@ class Configuration:
     STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
-    LOAD_NET_NUMBER= 0 #100000000 #50000000 
+    LOAD_NET_NUMBER= 155000 #100000000 #50000000 
     SIZE_EPOCH=5000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     HIDDEN_LAYERS=[100, 100, 100]
@@ -203,7 +203,7 @@ def main():
 		dP.action(action)
 		eC.unpause()
 		state=dP.getState()
-		reward=dP.getReward()
+		reward=dP.getReward() 
 		#print('phi: ', phi)
 		#action=np.random.randint(config.ACTION_SIZE)
 		#action=userAction()
@@ -212,11 +212,12 @@ def main():
 		# Check every 100 steps if is Flipped and Goal was reached
 		if countSteps % 5 == 0:
 			if dP.isGoal:
+				print('The goal was reached in ', countSteps, ' steps')
 				countSteps = 1
 				eC.setRandomModelState(config.ROBOT_NAME)
 				eC.setRandomModelState('goal')
 				dP.isGoal=False
-				print('Congratulations!!! The goal was reached.')
+				
 
 			if dP.isFlipped():
 				eC.setRandomModelState(config.ROBOT_NAME)
