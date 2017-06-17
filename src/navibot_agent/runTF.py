@@ -108,10 +108,10 @@ class Configuration:
     SENSOR_RANGE_MAX=np.sqrt(800.)
     SENSOR_RANGE_MIN=0.
     VEL=0.5
-    VEL_CURVE=0.25
+    VEL_CURVE=0.2
     NUM_STEPS=5000
 
-    UPDATE_TIME=1
+    UPDATE_TIME=0.5
     SPEED_UP=50 # 
 
 def main(epsilon_start, load_net_number):
