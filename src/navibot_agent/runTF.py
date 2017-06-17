@@ -283,6 +283,7 @@ def main(epsilon_start, load_net_number):
 		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 		agentTF.close()
 		eC.close()
+		time.sleep(10)
 		main(epsilon, countTotalSteps)
 
 if __name__ == '__main__':

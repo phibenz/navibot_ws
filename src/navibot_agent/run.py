@@ -319,6 +319,7 @@ def main(epsilon_start, load_net_number):
 		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
 		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 		eC.close()
+		time.sleep(10)
 		main(epsilon, countTotalSteps)
 
 
