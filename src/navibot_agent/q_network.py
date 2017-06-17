@@ -206,7 +206,7 @@ class DeepQLearner:
                     W=lasagne.init.Normal(.01),
                     b=lasagne.init.Constant(.1)
         )
-        
+
         lHidden3=lasagne.layers.DenseLayer(
                     lHidden2,
                     num_units=100,
@@ -214,15 +214,7 @@ class DeepQLearner:
                     W=lasagne.init.Normal(.01),
                     b=lasagne.init.Constant(.1)
         )
-        '''
-        lHidden4=lasagne.layers.DenseLayer(
-                    lHidden3,
-                    num_units=40,
-                    nonlinearity=lasagne.nonlinearities.rectify,
-                    W=lasagne.init.Normal(.01),
-                    b=lasagne.init.Constant(.1)
-        )
-        '''
+
         lOut=lasagne.layers.DenseLayer(
                     lHidden3,
                     num_units=outputDim,

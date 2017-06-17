@@ -25,7 +25,7 @@ class environmentControl:
 								[-9,-9,0]], dtype=float)
 								# TODO: Implement proper spawn and Goal map
 		
-		self._close()
+		self.close()
 		self.numGzserver=0
 		#subprocess.Popen("roscore")
 		#print('roscore launched')
@@ -55,7 +55,7 @@ class environmentControl:
 		self.set_model_state_client = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
 		self.physicsProp_client=rospy.ServiceProxy('gazebo/get_physics_properties', GetPhysicsProperties)
 
-	def _close(self):
+	def close(self):
 
 		# Kill gzclient, gzserver and roscore
 		tmp = os.popen("ps -Af").read()

@@ -83,8 +83,8 @@ class Configuration:
     STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
-    LOAD_NET_NUMBER= 0 #100000000 #50000000 
-    SIZE_EPOCH=5000 #10000
+    LOAD_NET_NUMBER= 0
+    SIZE_EPOCH=10000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     HIDDEN_LAYERS=[100, 100, 100]
     TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
@@ -279,10 +279,10 @@ def main(epsilon_start, load_net_number):
 			countSteps+=1
 	
 	except rospy.exceptions.ROSException:
-		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+		agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
 		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
-		eC.close()
 		agentTF.close()
+		eC.close()
 		main(epsilon, countTotalSteps)
 
 if __name__ == '__main__':

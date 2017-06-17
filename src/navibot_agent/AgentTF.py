@@ -5,7 +5,6 @@ import tensorflow.contrib.layers as initializer
 class AgentTF:
     def __init__(self, state_size, phi_length, action_size, hidden_layers, batch_size, tau, gamma):
 
-
         self.state_size=state_size
         self.phi_length=phi_length
         self.action_size=action_size

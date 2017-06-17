@@ -112,7 +112,7 @@ class Configuration:
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= .55
+    EPSILON_START= 1.
     EPSILON_MIN= 0.1
     EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
@@ -128,7 +128,7 @@ class Configuration:
     RMS_EPSILON=0.01
     UPDATE_RULE='deepmind_rmsprop'
     BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER= 90000 #100000000 #50000000 
+    LOAD_NET_NUMBER= 0
     SIZE_EPOCH=10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     FREEZE_INTERVAL=5000
@@ -321,12 +321,6 @@ def main(epsilon_start, load_net_number):
 		eC.close()
 		main(epsilon, countTotalSteps)
 
-#	except KeyboardInterrupt:
-#		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
-#		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
-#		raise KeyboardInterrupt
-
-
 
 if __name__ == '__main__':
-	main(0.55, 90000)
+	main(1., 0)

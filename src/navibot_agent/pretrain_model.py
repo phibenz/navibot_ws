@@ -59,7 +59,7 @@ BATCH_SIZE=32
 DISCOUNT=0.99
 RHO=0.95 #RMS_DECAY
 MOMENTUM=-1
-LEARNING_RATE=0.0001
+LEARNING_RATE=0.000001
 RMS_EPSILON=0.01
 UPDATE_RULE='deepmind_rmsprop'
 BATCH_ACCUMULATOR='sum'
@@ -68,7 +68,7 @@ SIZE_EPOCH=10000
 REPLAY_START_SIZE=100 #SIZE_EPOCH/2
 FREEZE_INTERVAL=5000
 
-LOAD_NET_NUMBER = 175000
+LOAD_NET_NUMBER = 90000
 home=os.path.expanduser("~")
 DATA_FOLDER = home + '/navibot_ws/src/navibot_agent'
 
@@ -90,7 +90,7 @@ network=DeepQLearner(STATE_SIZE,
 
 lossAverages=np.empty([0])
 
-for i in range(100000):
+for i in range(90000):
 
 	if i % 1000==0:
 		print('loss: ', np.mean(lossAverages))
@@ -99,8 +99,7 @@ for i in range(100000):
 	loss=trainNetwork(dataSet, network, BATCH_SIZE)
 			#print('Loss', loss)
             # count How many trainings had been done
-	batchCount+=1
     # add loss to lossAverages
 	lossAverages=np.append(lossAverages, loss)
 
-saveNetwork(DATA_FOLDER, 123, network)
+# saveNetwork(DATA_FOLDER, 111, network)

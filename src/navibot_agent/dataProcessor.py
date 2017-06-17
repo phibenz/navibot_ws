@@ -30,8 +30,11 @@ class dataProcessor:
 		self.SenorRangeMax=sensorRangeMax #TODO: Needs clarification
 		self.SensorRangeMin=sensorRangeMin
 
+
 		self.vel=vel
 		self.vel_curve=vel_curve
+		
+		self.lastDistance= 20
 		#self.leftWheelVelPub = rospy.Publisher("/navibot/left_wheel_hinge_velocity_controller/command", 
 		#										Float64, queue_size=10)
 		#self.rightWheelVelPub = rospy.Publisher("/navibot/right_wheel_hinge_velocity_controller/command", 
@@ -164,7 +167,9 @@ class dataProcessor:
 			collisionReward = 0
 
 		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2)
-		distanceReward=-distance/np.sqrt(800) # Noramlize. Longest distance is the diagonal over the 20x20 field
+		
+		distanceReward= round(self.lastDistance - distance,3)
+		self.lastDistance=distance
 
 		goalReward=0
 		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
