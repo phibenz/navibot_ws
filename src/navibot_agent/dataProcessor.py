@@ -14,17 +14,15 @@ from std_srvs.srv import Empty
 
 
 class dataProcessor:
-	def __init__(self, environmentController, robotName, updatesPerStep, phiLength, stateSize, numSensorVal, sensorRangeMax, sensorRangeMin, vel, vel_curve):
-
-		rospy.init_node('dataProcessor', anonymous=True)
+	def __init__(self, environmentController, robotName, phiLength, stateSize, numSensorVal, sensorRangeMax, sensorRangeMin, vel, vel_curve, update_time, speed_up):
 
 		self.envC=environmentController
 
 		self.robotName = robotName
 		self.robotIndex, self.goalIndex = self.getIndeces()
-		self.updatesPerStep=updatesPerStep 
+		self.update_time=update_time
+		self.speed_up=speed_up
 		self.phiLength=phiLength
-		self.deltaStep=int(self.updatesPerStep/(self.phiLength-1))
 		self.isGoal=False
 
 		self.stateSize=stateSize # TODO maybe as input
@@ -42,7 +40,10 @@ class dataProcessor:
 
 	def getIndeces(self):
 		# Helper function
-		modelNames=rospy.wait_for_message("/gazebo/model_states", ModelStates).name
+		try:
+			modelNames=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).name
+		except:
+			raise rospy.exceptions.ROSException
 		robotExists = False
 		for i in range(len(modelNames)): 
 			if modelNames[i] == self.robotName:
@@ -62,6 +63,20 @@ class dataProcessor:
 
 	def getStateReward(self):
 		#self.envC.unpause()
+		time.sleep(self.update_time/self.speed_up)
+		state=np.zeros((1, self.stateSize))
+		try:
+			laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan, timeout=5).ranges)
+		except:
+			raise rospy.exceptions.ROSException
+		laserData[np.where(np.isinf(laserData))[0]]=0.
+		state[0,0:self.numSensorVal]=(laserData-self.SensorRangeMin)/(self.SenorRangeMax-self.SensorRangeMin)
+		
+		robotPosition,robotOrientation=self.getRobotPosOri()
+		goalPosition=self.getGoalPos()
+		state[0,7:11]=[robotPosition[0]/10, robotPosition[1]/10, goalPosition[0]/10, goalPosition[1]/10]
+		reward=self.getReward(robotPosition, goalPosition)
+		'''
 		time=rospy.wait_for_message("/clock", Clock).clock
 		lastTime=time
 		counter=0
@@ -81,7 +96,8 @@ class dataProcessor:
 					#state[0,8]=robotPosition[1]/10
 					#state[0,9]=goalPosition[0]/10
 					#state[0,10]=goalPosition[1]/10
-					'''
+		'''
+		'''
 					state[0,7]=(np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2))/np.sqrt(800)
 					opposite=(goalPosition[0]-robotPosition[0])
 					adjacent=(goalPosition[1]-robotPosition[1])
@@ -95,9 +111,9 @@ class dataProcessor:
 					print('phi', phi*180/np.pi)
 					state[0,8]=phi/np.pi
 					'''
-					reward=self.getReward(robotPosition, goalPosition)
-				counter+=1
-				lastTime=time
+		#reward=self.getReward(robotPosition, goalPosition)
+		#counter+=1
+		#lastTime=time
 		#self.envC.pause()
 		return state, reward
 
@@ -106,8 +122,10 @@ class dataProcessor:
 		#if self.isPaused():
 		#	self.envC.unpause()
 		#	wasPaused=True
-		roboPO=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.robotIndex]
-
+		try:
+			roboPO=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).pose[self.robotIndex]
+		except:
+			raise rospy.exceptions.ROSException
 		robotPosition=np.array((roboPO.position.x, roboPO.position.y, roboPO.position.z))
 		robotOrientation=np.array((roboPO.orientation.x, roboPO.orientation.y, roboPO.orientation.z, roboPO.orientation.w))
 		#if wasPaused:
@@ -115,8 +133,10 @@ class dataProcessor:
 		return robotPosition, robotOrientation
 
 	def getGoalPos(self):
-
-		goalPose=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.goalIndex]
+		try:
+			goalPose=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).pose[self.goalIndex]
+		except:
+			raise rospy.exceptions.ROSException
 		goalPos=np.array((goalPose.position.x, goalPose.position.y, goalPose.position.z))
 		return goalPos
 
@@ -124,10 +144,13 @@ class dataProcessor:
 		return self.envC.physicsProp_client.call().pause
 
 	def getReward(self, robotPosition, goalPosition):
-		leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState)
-		rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState)
-		chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState)
-		
+		try:
+			leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState, timeout=5)
+			rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState, timeout=5)
+			chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState, timeout=5)
+		except:
+			raise rospy.exceptions.ROSException
+
 		if len(np.where([leftWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(leftWheelBump.states))])[0])>0:
 			#print('Left wheel collided with ', leftWheelBump.states[i].collision2_name.split('::')[0])
 			collisionReward = -1

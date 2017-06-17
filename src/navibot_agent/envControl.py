@@ -26,7 +26,7 @@ class environmentControl:
 								# TODO: Implement proper spawn and Goal map
 		
 		self._close()
-
+		self.numGzserver=0
 		#subprocess.Popen("roscore")
 		#print('roscore launched')
 		#time.sleep(5)
@@ -63,6 +63,7 @@ class environmentControl:
 		gzserver_count = tmp.count('gzserver')
 		roscore_count = tmp.count('roscore')
 		rosmaster_count = tmp.count('rosmaster')
+		roslaunch_count = tmp.count('roslaunch')
 
 		if gzclient_count > 0:
 		    os.system("killall -9 gzclient")
@@ -72,6 +73,8 @@ class environmentControl:
 		    os.system("killall -9 rosmaster")
 		if roscore_count > 0:
 		    os.system("killall -9 roscore")
+		if roslaunch_count > 0:
+		    os.system("killall -9 roslaunch")
 
 		time.sleep(1)
 		'''

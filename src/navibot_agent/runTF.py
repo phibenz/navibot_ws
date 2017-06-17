@@ -5,6 +5,7 @@ from data_setTF import DataSet
 import time, os, pickle
 import numpy as np
 import sys
+import rospy
 
 
 #---------FILE-MANAGEMENT------------#    
@@ -73,7 +74,7 @@ class Configuration:
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= 0.25
+    EPSILON_START= 1.
     EPSILON_MIN= 0.1
     EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
@@ -82,7 +83,7 @@ class Configuration:
     STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
-    LOAD_NET_NUMBER= 155000 #100000000 #50000000 
+    LOAD_NET_NUMBER= 0 #100000000 #50000000 
     SIZE_EPOCH=5000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     HIDDEN_LAYERS=[100, 100, 100]
@@ -113,10 +114,13 @@ class Configuration:
     UPDATE_TIME=1
     SPEED_UP=50 # 
 
-def main():
+def main(epsilon_start, load_net_number):
 	sys.setrecursionlimit(2000)
 
 	config=Configuration()
+	config.EPSILON_START=epsilon_start
+	config.LOAD_NET_NUMBER=load_net_number
+
 	agentTF=AgentTF(config.STATE_SIZE, 
 					config.PHI_LENGTH, 
 					config.ACTION_SIZE, 
@@ -176,105 +180,110 @@ def main():
 
 	quit=False
 
-	for i in range(4):
-		action=np.random.randint(config.ACTION_SIZE)
-		dP.action(action)
-		
-		state=dP.getState()
-		reward=dP.getReward()
-		dataSet.addSample(lastState,
-						  action,
-						  reward,
-						  state,
-						  dP.isGoal)
-		countTotalSteps+=1
-		countSteps+=1
-		lastState=state
+	try:
+		for i in range(4):
+			action=np.random.randint(config.ACTION_SIZE)
+			dP.action(action)
+			
+			state=dP.getState()
+			reward=dP.getReward()
+			dataSet.addSample(lastState,
+							  action,
+							  reward,
+							  state,
+							  dP.isGoal)
+			countTotalSteps+=1
+			countSteps+=1
+			lastState=state
 
-	while not quit:
-		if countTotalSteps%1000==0:
-			updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
-			lossAverages=np.empty([0])
-			print(countTotalSteps)
+		while not quit:
+			if countTotalSteps%1000==0:
+				updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
+				lossAverages=np.empty([0])
+				print(countTotalSteps)
 
 
-		phi=dataSet.phi(lastState)
-		action=agentTF.getAction(phi, epsilon)
-		dP.action(action)
-		eC.unpause()
-		state=dP.getState()
-		reward=dP.getReward() 
-		#print('phi: ', phi)
-		#action=np.random.randint(config.ACTION_SIZE)
-		#action=userAction()
-		#time.sleep(0.5)
-		
-		# Check every 100 steps if is Flipped and Goal was reached
-		if countSteps % 5 == 0:
-			if dP.isGoal:
-				print('The goal was reached in ', countSteps, ' steps')
+			phi=dataSet.phi(lastState)
+			action=agentTF.getAction(phi, epsilon)
+			dP.action(action)
+			eC.unpause()
+			state=dP.getState()
+			reward=dP.getReward() 
+			#print('phi: ', phi)
+			#action=np.random.randint(config.ACTION_SIZE)
+			#action=userAction()
+			#time.sleep(0.5)
+			
+			# Check every 100 steps if is Flipped and Goal was reached
+			if countSteps % 5 == 0:
+				if dP.isGoal:
+					print('The goal was reached in ', countSteps, ' steps')
+					countSteps = 1
+					eC.setRandomModelState(config.ROBOT_NAME)
+					eC.setRandomModelState('goal')
+					dP.isGoal=False
+					
+
+				if dP.isFlipped():
+					eC.setRandomModelState(config.ROBOT_NAME)
+					reward-=1
+					print('Flipped!')
+
+			reward-=0.01 # Reward that every step costs a little bit
+			# After NUM_STEPS the chance is over
+			if countSteps % config.NUM_STEPS == 0:
 				countSteps = 1
+				reward-=1
 				eC.setRandomModelState(config.ROBOT_NAME)
 				eC.setRandomModelState('goal')
-				dP.isGoal=False
-				
+				print('Your chance is over! Try again ...')
 
-			if dP.isFlipped():
-				eC.setRandomModelState(config.ROBOT_NAME)
-				reward-=1
-				print('Flipped!')
+			eC.pause()
 
-		reward-=0.01 # Reward that every step costs a little bit
-		# After NUM_STEPS the chance is over
-		if countSteps % config.NUM_STEPS == 0:
-			countSteps = 1
-			reward-=1
-			eC.setRandomModelState(config.ROBOT_NAME)
-			eC.setRandomModelState('goal')
-			print('Your chance is over! Try again ...')
-
-		eC.pause()
-
-		dataSet.addSample(lastState,
-						  action,
-						  reward,
-						  state,
-						  dP.isGoal)
-		
-		# Training
-		if countTotalSteps>config.REPLAY_START_SIZE:
-			batchStates, batchActions, batchRewards, batchNextStates, batchTerminals= \
-	            dataSet.randomBatch(config.BATCH_SIZE)
-			loss = agentTF.train(batchStates, batchActions, batchRewards, batchNextStates, batchTerminals)
-			#print('Loss', loss)
-            # count How many trainings had been done
-			batchCount+=1
-            # add loss to lossAverages
-			lossAverages=np.append(lossAverages, loss)
-
-		
-		#Update Epsilon save dataSet, network
-		if countTotalSteps % config.SIZE_EPOCH==0:
-	        # Number of Epochs
-			epochCount+=1
-	      
-	        # update Learning File
-	        #updateLearningFile()
-	      
-	        # Update Epsilon
-			if (epsilon - epsilonRate) < config.EPSILON_MIN:
-				quit=True
-			epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
-			print('Epsilon updated to: ', epsilon)
+			dataSet.addSample(lastState,
+							  action,
+							  reward,
+							  state,
+							  dP.isGoal)
 			
-			agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
-			saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
-		lastState=state
-		countTotalSteps+=1
-		countSteps+=1
+			# Training
+			if countTotalSteps>config.REPLAY_START_SIZE:
+				batchStates, batchActions, batchRewards, batchNextStates, batchTerminals= \
+		            dataSet.randomBatch(config.BATCH_SIZE)
+				loss = agentTF.train(batchStates, batchActions, batchRewards, batchNextStates, batchTerminals)
+				#print('Loss', loss)
+	            # count How many trainings had been done
+				batchCount+=1
+	            # add loss to lossAverages
+				lossAverages=np.append(lossAverages, loss)
 
-	agentTF.close()
-
+			
+			#Update Epsilon save dataSet, network
+			if countTotalSteps % config.SIZE_EPOCH==0:
+		        # Number of Epochs
+				epochCount+=1
+		      
+		        # update Learning File
+		        #updateLearningFile()
+		      
+		        # Update Epsilon
+				if (epsilon - epsilonRate) < config.EPSILON_MIN:
+					quit=True
+				epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
+				print('Epsilon updated to: ', epsilon)
+				
+				agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
+				saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+			lastState=state
+			countTotalSteps+=1
+			countSteps+=1
+	
+	except rospy.exceptions.ROSException:
+		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+		eC.close()
+		agentTF.close()
+		main(epsilon, countTotalSteps)
 
 if __name__ == '__main__':
-	main()
+	main(1.,0)

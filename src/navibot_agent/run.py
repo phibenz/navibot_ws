@@ -5,6 +5,7 @@ from data_set import DataSet
 import time, os, pickle
 import numpy as np
 import sys
+import rospy
 
 
 #---------FILE-MANAGEMENT------------#    
@@ -111,7 +112,7 @@ class Configuration:
     #------------------------
     # Agent/Network parameters:
     #------------------------
-    EPSILON_START= .95
+    EPSILON_START= .55
     EPSILON_MIN= 0.1
     EPSILON_DECAY=0.05
     REPLAY_MEMORY_SIZE= 10000000
@@ -127,7 +128,7 @@ class Configuration:
     RMS_EPSILON=0.01
     UPDATE_RULE='deepmind_rmsprop'
     BATCH_ACCUMULATOR='sum'
-    LOAD_NET_NUMBER= 10000 #100000000 #50000000 
+    LOAD_NET_NUMBER= 90000 #100000000 #50000000 
     SIZE_EPOCH=10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
     FREEZE_INTERVAL=5000
@@ -146,18 +147,23 @@ class Configuration:
     # Data processor:
     #------------------------
     ROBOT_NAME='navibot'
-    UPDATES_PER_STEP=50
     NUM_SENSOR_VAL=7
     SENSOR_RANGE_MAX=np.sqrt(800.)
     SENSOR_RANGE_MIN=0.
-    VEL=0.2
-    VEL_CURVE=0.1
+    VEL=0.5
+    VEL_CURVE=0.2
     NUM_STEPS=5000
 
-def main():
+    UPDATE_TIME=0.5
+    SPEED_UP=50 # 
+
+def main(epsilon_start, load_net_number):
 	sys.setrecursionlimit(2000)
 
 	config=Configuration()
+	config.EPSILON_START=epsilon_start
+	config.LOAD_NET_NUMBER=load_net_number
+
 	if config.LOAD_NET_NUMBER>0:
 		dataSet=loadDataSet(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
 		network=loadNetwork(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
@@ -195,14 +201,15 @@ def main():
 
 	dP=dataProcessor(eC, 
 					 config.ROBOT_NAME,
-					 config.UPDATES_PER_STEP,
 					 config.PHI_LENGTH,
 					 config.STATE_SIZE,
 					 config.NUM_SENSOR_VAL,
 					 config.SENSOR_RANGE_MAX,
 					 config.SENSOR_RANGE_MIN,
 					 config.VEL,
-					 config.VEL_CURVE)
+					 config.VEL_CURVE,
+					 config.UPDATE_TIME,
+					 config.SPEED_UP)
 
 
 	lastState=np.zeros((1,config.STATE_SIZE))
@@ -230,85 +237,96 @@ def main():
 						  dP.isGoal)
 		countTotalSteps+=1
 		countSteps+=1
+	try:
+		while not quit:
+			if countTotalSteps%1000==0:
+				updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
+				lossAverages=np.empty([0])
+				print(countTotalSteps)
 
-	while not quit:
-		if countTotalSteps%1000==0:
-			updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
-			lossAverages=np.empty([0])
-			print(countTotalSteps)
+			eC.unpause()
+			state,reward=dP.getStateReward()
+			phi=dataSet.phi(state)
+			#print('phi: ', phi)
+			action=network.choose_action(phi, epsilon)
+			#action=np.random.randint(config.ACTION_SIZE)
+			#action=userAction()
+			#time.sleep(0.5)
+			dP.action(action)
+			#print('state: ', state)
+			#print('reward: ', reward)
+			#print('action: ', action)
+			
+			# Check every 100 steps if is Flipped and Goal was reached
+			if countSteps % 5 == 0:
+				if dP.isGoal:
+					print('The goal was reached after', countSteps, 'steps' )
+					countSteps = 1
+					eC.setRandomModelState(config.ROBOT_NAME)
+					eC.setRandomModelState('goal')
+					dP.isGoal=False
+					
 
-		state,reward=dP.getStateReward()
-		phi=dataSet.phi(state)
-		#print('phi: ', phi)
-		action=network.choose_action(phi, epsilon)
-		#action=np.random.randint(config.ACTION_SIZE)
-		#action=userAction()
-		#time.sleep(0.5)
-		dP.action(action)
-		#print('state: ', state)
-		#print('reward: ', reward)
-		#print('action: ', action)
-		
-		# Check every 100 steps if is Flipped and Goal was reached
-		if countSteps % 5 == 0:
-			if dP.isGoal:
+				if dP.isFlipped():
+					eC.setRandomModelState(config.ROBOT_NAME)
+					reward-=1
+					print('Flipped!')
+			
+			reward-=0.01 # Reward that every step costs a little bit
+			# After NUM_STEPS the chance is over
+			if countSteps % config.NUM_STEPS == 0:
 				countSteps = 1
+				reward-=1
 				eC.setRandomModelState(config.ROBOT_NAME)
 				eC.setRandomModelState('goal')
-				dP.isGoal=False
-				print('Congratulations!!! The goal was reached.')
+				print('Your chance is over! Try again ...')
 
-			if dP.isFlipped():
-				eC.setRandomModelState(config.ROBOT_NAME)
-				reward-=1
-				print('Flipped!')
-
-		# After NUM_STEPS the chance is over
-		if countSteps % config.NUM_STEPS == 0:
-			countSteps = 1
-			reward-=1
-			eC.setRandomModelState(config.ROBOT_NAME)
-			eC.setRandomModelState('goal')
-			print('Your chance is over! Try again ...')
-
-		dataSet.addSample(state,
-						  action,
-						  reward,
-						  dP.isGoal)
-		
-		# Training
-		if countTotalSteps>config.REPLAY_START_SIZE:
-			loss=trainNetwork(dataSet, network, config.BATCH_SIZE)
-			#print('Loss', loss)
-            # count How many trainings had been done
-			batchCount+=1
-            # add loss to lossAverages
-			lossAverages=np.append(lossAverages, loss)
-
-		
-		#Update Epsilon save dataSet, network
-		if countTotalSteps % config.SIZE_EPOCH==0:
 			eC.pause()
-	        # Number of Epochs
-			epochCount+=1
-	      
-	        # update Learning File
-	        #updateLearningFile()
-	      
-	        # Update Epsilon
-			if (epsilon - epsilonRate) < config.EPSILON_MIN:
-				quit=True
-			epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
-			print('Epsilon updated to: ', epsilon)
-			
-			saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
-			saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
-			eC.unpause()
-			
-		countTotalSteps+=1
-		countSteps+=1
+			dataSet.addSample(state,
+							  action,
+							  reward,
+							  dP.isGoal)
+
+			# Training
+			if countTotalSteps>config.REPLAY_START_SIZE:
+				loss=trainNetwork(dataSet, network, config.BATCH_SIZE)
+				#print('Loss', loss)
+	            # count How many trainings had been done
+				batchCount+=1
+	            # add loss to lossAverages
+				lossAverages=np.append(lossAverages, loss)
+
+			#Update Epsilon save dataSet, network
+			if countTotalSteps % config.SIZE_EPOCH==0:
+		        # Number of Epochs
+				epochCount+=1
+		      
+		        # update Learning File
+		        #updateLearningFile()
+		      
+		        # Update Epsilon
+				if (epsilon - epsilonRate) < config.EPSILON_MIN:
+					quit=True
+				epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
+				print('Epsilon updated to: ', epsilon)
+				saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+				saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+				
+			countTotalSteps+=1
+			countSteps+=1
+
+	except rospy.exceptions.ROSException:
+		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+		eC.close()
+		main(epsilon, countTotalSteps)
+
+#	except KeyboardInterrupt:
+#		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+#		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+#		raise KeyboardInterrupt
 
 
 
 if __name__ == '__main__':
-	main()
+	main(0.55, 90000)

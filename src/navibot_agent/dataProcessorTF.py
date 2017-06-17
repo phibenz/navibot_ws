@@ -38,7 +38,10 @@ class dataProcessor:
 
 	def getIndeces(self):
 		# Helper function
-		modelNames=rospy.wait_for_message("/gazebo/model_states", ModelStates).name
+		try:
+			modelNames=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).name
+		except:
+			raise rospy.exceptions.ROSException
 		robotExists = False
 		for i in range(len(modelNames)): 
 			if modelNames[i] == self.robotName:
@@ -59,7 +62,10 @@ class dataProcessor:
 	def getState(self):
 		time.sleep(self.update_time/self.speed_up)
 		state=np.zeros((1, self.stateSize))
-		laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan).ranges)
+		try:
+			laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan, timeout=5).ranges)
+		except:
+			raise rospy.exceptions.ROSException
 		laserData[np.where(np.isinf(laserData))[0]]=0.
 		state[0,0:self.numSensorVal]=(laserData-self.SensorRangeMin)/(self.SenorRangeMax-self.SensorRangeMin)
 		
@@ -114,7 +120,10 @@ class dataProcessor:
 		#if self.isPaused():
 		#	self.envC.unpause()
 		#	wasPaused=True
-		roboPO=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.robotIndex]
+		try:
+			roboPO=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).pose[self.robotIndex]
+		except:
+			raise rospy.exceptions.ROSException
 
 		robotPosition=np.array((roboPO.position.x, roboPO.position.y, roboPO.position.z))
 		robotOrientation=np.array((roboPO.orientation.x, roboPO.orientation.y, roboPO.orientation.z, roboPO.orientation.w))
@@ -124,7 +133,11 @@ class dataProcessor:
 
 	def getGoalPos(self):
 
-		goalPose=rospy.wait_for_message("/gazebo/model_states", ModelStates).pose[self.goalIndex]
+		try:
+			goalPose=rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=5).pose[self.goalIndex]
+		except:
+			raise rospy.exceptions.ROSException
+
 		goalPos=np.array((goalPose.position.x, goalPose.position.y, goalPose.position.z))
 		return goalPos
 
@@ -132,10 +145,12 @@ class dataProcessor:
 		return self.envC.physicsProp_client.call().pause
 
 	def getReward(self):
-		leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState)
-		rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState)
-		chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState)
-		
+		try:
+			leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState, timeout=5)
+			rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState, timeout=5)
+			chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState, timeout=5)
+		except:
+			raise rospy.exceptions.ROSException
 		goalPosition=self.getGoalPos()
 		robotPosition,robotOrientation=self.getRobotPosOri()
 		if len(np.where([leftWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(leftWheelBump.states))])[0])>0:
