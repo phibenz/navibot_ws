@@ -167,7 +167,7 @@ class dataProcessor:
 			collisionReward = 0
 
 		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2)
-		
+		'''
 		distanceR = self.lastDistance - distance
 		if distanceR>0.1:
 			distanceReward=distanceR
@@ -176,6 +176,8 @@ class dataProcessor:
 		else:
 		 	distanceReward=0
 		self.lastDistance=distance
+		'''
+		distanceReward=-distance/np.sqrt(500)+0.5
 
 		goalReward=0
 		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
