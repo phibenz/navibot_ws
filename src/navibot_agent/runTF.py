@@ -205,10 +205,10 @@ def main(epsilon_start, load_net_number):
 
 			phi=dataSet.phi(lastState)
 			action=agentTF.getAction(phi, epsilon)
-			dP.action(action)
 			eC.unpause()
+			dP.action(action)
 			state=dP.getState()
-			reward=dP.getReward() 
+			reward=dP.getReward()
 			#print('phi: ', phi)
 			#action=np.random.randint(config.ACTION_SIZE)
 			#action=userAction()

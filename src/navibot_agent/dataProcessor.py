@@ -168,7 +168,13 @@ class dataProcessor:
 
 		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2)
 		
-		distanceReward= round(self.lastDistance - distance,3)
+		distanceR = self.lastDistance - distance
+		if distanceR>0.1:
+			distanceReward=distanceR
+		elif distanceR<0.1:
+			distanceReward=distanceR
+		else:
+		 	distanceReward=0
 		self.lastDistance=distance
 
 		goalReward=0
