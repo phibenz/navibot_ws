@@ -82,5 +82,25 @@
       </geometry>
      </visual>
     </link>
+
+    <link name="centercube">
+    <pose>0 0 1 0 0 0</pose>
+    <must_be_base_link>1</must_be_base_link>
+    <collision name="collision">
+       <geometry>
+         <box>
+           <size>4 4 2</size>  
+        </box>
+       </geometry>
+     </collision>
+     <visual name="visual">
+       <cast_shadows>false</cast_shadows>
+       <geometry>
+         <box>
+          <size>4 4 2</size>
+          </box>
+      </geometry>
+     </visual>
+    </link>
 </model>
 </sdf>

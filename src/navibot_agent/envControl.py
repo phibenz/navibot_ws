@@ -15,15 +15,21 @@ class environmentControl:
 	def __init__(self, pathRobot, pathGoal, pathLaunchfile):
 		self.pathRobot=pathRobot
 		self.pathGoal=pathGoal
-		self.goalList=np.array([[0,0,0], 
-								[0,9,0], 
-								[9,0,0],
-								[-9,0,0],
-								[9,9,0],
-								[-9,9,0],
-								[9,-9,0],
-								[-9,-9,0]], dtype=float)
+		self.goalList=np.array([[0,4,0], 
+								[4,0,0],
+								[-4,0,0],
+								[4,4,0],
+								[-4,4,0],
+								[4,-4,0],
+								[-4,-4,0]], dtype=float)
 								# TODO: Implement proper spawn and Goal map
+		self.spawnList=np.array([[ 0, 3,0],
+								 [ 3, 0,0],
+								 [-3, 0,0],
+								 [ 3, 3,0],
+								 [-3, 3,0],
+								 [ 3,-3,0],
+								 [-3,-3,0]], dtype=float)
 		
 		self.close()
 		self.numGzserver=0
@@ -96,28 +102,28 @@ class environmentControl:
 		self.reset_simulation_client.call()
 	'''
 	def spawn(self, robotName):
-		idx=np.random.randint(len(self.goalList)-1)
-		goalPos=self.goalList[idx]
+		idx=np.random.randint(len(self.spawnList)-1)
+		spawnPos=self.spawnList[idx]
 		
 		initial_pose = Pose()
-		initial_pose.position.x = goalPos[0]
-		initial_pose.position.y = goalPos[1]
+		initial_pose.position.x = spawnPos[0]
+		initial_pose.position.y = spawnPos[1]
 		initial_pose.position.z = 0.5
 		
-		#initial_pose.orientation.x=0.
-		#initial_pose.orientation.y=0.
 		initial_pose.orientation.z=np.random.random()*2 -1
 		initial_pose.orientation.w=np.random.random()*2 -1
 		
 		with open(self.pathRobot, 'r') as f:
 			data=f.read()
-
 		self.spawn_model_client(robotName, data, "naviBotNameSpace", initial_pose, "world")
 
 	def spawnGoal(self):
+		idx=np.random.randint(len(self.goalList)-1)
+		goalPos=self.goalList[idx]
+
 		goal_pose = Pose()
-		goal_pose.position.x=  0
-		goal_pose.position.y= -9
+		goal_pose.position.x= goalPos[0]
+		goal_pose.position.y= goalPos[1]
 		goal_pose.position.z=2.0
 
 		with open(self.pathGoal, 'r') as f:
@@ -125,28 +131,34 @@ class environmentControl:
 		self.spawn_model_client('goal', data, "goalNameSpace", goal_pose, "world")
 
 	def setRandomModelState(self, name):
-		
-		idx=np.random.randint(len(self.goalList)-1)
-		goalPos=self.goalList[idx]
-		
-		state=ModelState()
-		state.model_name=name
-		state.reference_frame='world'
 
 		if name == 'goal':
-			state.pose.position.x = 0
-			state.pose.position.y = -9
-			state.pose.position.z = 2.
-		else:
+			idx=np.random.randint(len(self.goalList)-1)
+			goalPos=self.goalList[idx]
+			
+			state=ModelState()
+			state.model_name=name
+			state.reference_frame='world'
+
 			state.pose.position.x = goalPos[0]
 			state.pose.position.y = goalPos[1]
+			state.pose.position.z = 2.
+
+		elif name == 'navibot':
+			idx=np.random.randint(len(self.spawnList)-1)
+			spawnPos=self.spawnList[idx]
+			
+			state=ModelState()
+			state.model_name=name
+			state.reference_frame='world'
+
+			state.pose.position.x = spawnPos[0]
+			state.pose.position.y = spawnPos[1]
 			state.pose.position.z = 0.5
 
-		#state.pose.orientation.x = 0
-		#state.pose.orientation.y = 0.
-		if name != 'goal': 
 			state.pose.orientation.z = np.random.random()*2 -1
-			state.pose.orientation.w = np.random.random()*2-1
+			state.pose.orientation.w = np.random.random()*2 -1
+
 		self.set_model_state_client(state)
 
 	def getGoallist(self):

@@ -1,6 +1,6 @@
 from envControl import environmentControl
 from dataProcessor import dataProcessor
-from q_network import DeepQLearner
+from Agent import *
 from data_set import DataSet
 import time, os, pickle
 import numpy as np
@@ -10,33 +10,11 @@ import rospy
 
 #---------FILE-MANAGEMENT------------#    
 
-def saveNetwork(dataFolder, numRounds, network):
-    print('...Writing Network to: \n' + \
-            dataFolder + '/NetFiles/' + 'Net_' + \
-            str(numRounds) + '.pkl')
-    netFile=open(dataFolder + '/NetFiles/' + 'Net_' + \
-                str(numRounds) + '.pkl','wb')
-    pickle.dump(network, netFile)
-    netFile.close()
-    print('Network written successfully.')
-
-def loadNetwork(dataFolder, numRounds):
-    #TODO: Add exceptions for files which are nonexistent
-    print('...Reading Network from: \n' + \
-        dataFolder + '/NetFiles/' + 'Net_' + \
-        str(numRounds) + '.pkl')
-    netFile=open(dataFolder + '/NetFiles/' + 'Net_'+ \
-                str(numRounds) + '.pkl', 'rb')
-    network=pickle.load(netFile)
-    netFile.close()
-    print('Network read succesfully.')
-    return network
-
 def saveDataSet(dataFolder, numRounds, dataSet):
     print('...Writing DataSet to: \n' + \
-            dataFolder + '/DataSets/' + 'DataSet_' + \
+            dataFolder + '/DataSets/' + 'DataSetTF_' + \
             str(numRounds) + '.pkl')
-    dataFile=open(dataFolder + '/DataSets/' + 'DataSet_' + \
+    dataFile=open(dataFolder + '/DataSets/' + 'DataSetTF_' + \
                 str(numRounds) + '.pkl','wb')
     pickle.dump(dataSet, dataFile)
     dataFile.close()
@@ -45,29 +23,14 @@ def saveDataSet(dataFolder, numRounds, dataSet):
 def loadDataSet(dataFolder, numRounds):
     #TODO: Add exceptions for files which are nonexistent
     print('...Reading DataSet from: \n' + \
-        dataFolder + '/DataSets/' + 'DataSet_' + \
+        dataFolder + '/DataSets/' + 'DataSetTF_' + \
         str(numRounds) + '.pkl')
-    dataFile=open(dataFolder + '/DataSets/' + 'DataSet_'+ \
+    dataFile=open(dataFolder + '/DataSets/' + 'DataSetTF_'+ \
                 str(numRounds) + '.pkl', 'rb')
     dataSet=pickle.load(dataFile)
     dataFile.close()
     print('DataSet read succesfully.')
     return dataSet
-    
-def trainNetwork(dataSet, network, batchSize):
-	batchStates, batchActions, batchRewards, batchTerminals= \
-	            dataSet.randomBatch(batchSize)
-	'''        
-	print('batchStates: ', batchStates)
-	print('BatchActions: ', batchActions)
-	print('batchRewards: ', batchRewards)
-	print('batchTerminals: ', batchTerminals)
-	'''
-	loss=network.train(batchStates, 
-	                        batchActions, 
-	                        batchRewards, 
-	                        batchTerminals)
-	return loss
 
 def userAction():
 	while True:
@@ -86,7 +49,7 @@ def openLearningFile(dataFolder):
 
 def updateLearningFile(dataFolder, lossAverages, epochCount):
 	learningFile=open(dataFolder + '/LearningFile/' + \
-                        'learning.csv','a')
+                        'learningTF.csv','a')
 	out="{},{}\n".format(np.mean(lossAverages), epochCount)
 	learningFile.write(out)
 	learningFile.flush()
@@ -108,7 +71,6 @@ def updateRewardFile():
 
 class Configuration:
 
-    
     #------------------------
     # Agent/Network parameters:
     #------------------------
@@ -121,18 +83,12 @@ class Configuration:
     STATE_SIZE=11
     ACTION_SIZE=4
     BATCH_SIZE=32
-    DISCOUNT=0.99
-    RHO=0.95 #RMS_DECAY
-    MOMENTUM=-1
-    LEARNING_RATE=0.0001
-    RMS_EPSILON=0.01
-    UPDATE_RULE='deepmind_rmsprop'
-    BATCH_ACCUMULATOR='sum'
     LOAD_NET_NUMBER= 0
-    SIZE_EPOCH=10000
+    SIZE_EPOCH=10000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-    FREEZE_INTERVAL=5000
-
+    HIDDEN_LAYERS=[100, 100, 100]
+    TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
+    GAMMA=0.99
 
 	#------------------------
     # Environment Control:
@@ -147,12 +103,13 @@ class Configuration:
     # Data processor:
     #------------------------
     ROBOT_NAME='navibot'
+    
     NUM_SENSOR_VAL=7
-    SENSOR_RANGE_MAX=np.sqrt(800.)
+    SENSOR_RANGE_MAX=np.sqrt(200.)
     SENSOR_RANGE_MIN=0.
     VEL=0.5
     VEL_CURVE=0.2
-    NUM_STEPS=5000
+    NUM_STEPS=1000
 
     UPDATE_TIME=0.5
     SPEED_UP=50 # 
@@ -164,24 +121,20 @@ def main(epsilon_start, load_net_number):
 	config.EPSILON_START=epsilon_start
 	config.LOAD_NET_NUMBER=load_net_number
 
+	agentTF=AgentTF(config.STATE_SIZE, 
+					config.PHI_LENGTH, 
+					config.ACTION_SIZE, 
+					config.HIDDEN_LAYERS, 
+					config.BATCH_SIZE,
+					config.TAU,
+					config.GAMMA)
+
+
 	if config.LOAD_NET_NUMBER>0:
 		dataSet=loadDataSet(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
-		network=loadNetwork(config.DATA_FOLDER, config.LOAD_NET_NUMBER)
+		agentTF.restore_model(config.DATA_FOLDER)
 		countTotalSteps = config.LOAD_NET_NUMBER
 	else:
-		network=DeepQLearner(config.STATE_SIZE,
-	                        config.ACTION_SIZE,
-	                        config.PHI_LENGTH,
-	                        config.BATCH_SIZE,
-	                        config.DISCOUNT,
-	                        config.RHO,
-	                        config.MOMENTUM,
-	                        config.LEARNING_RATE,
-	                        config.RMS_EPSILON,
-	                        config.RNG,
-	                        config.UPDATE_RULE,
-	                        config.BATCH_ACCUMULATOR,
-	                        config.FREEZE_INTERVAL)
 	    # Initialize DataSet
 		dataSet=DataSet(config.STATE_SIZE,
 	                    config.REPLAY_MEMORY_SIZE,
@@ -227,40 +180,45 @@ def main(epsilon_start, load_net_number):
 
 	quit=False
 
-	for i in range(4):
-		state,reward=dP.getStateReward()
-		action=np.random.randint(config.ACTION_SIZE)
-		dP.action(action)
-		dataSet.addSample(state,
-						  action,
-						  reward,
-						  dP.isGoal)
-		countTotalSteps+=1
-		countSteps+=1
 	try:
+		for i in range(4):
+			action=np.random.randint(config.ACTION_SIZE)
+			dP.action(action)
+			
+			state=dP.getState()
+			reward=dP.getReward()
+			dataSet.addSample(lastState,
+							  action,
+							  reward,
+							  state,
+							  dP.isGoal)
+			countTotalSteps+=1
+			countSteps+=1
+			lastState=state
+
 		while not quit:
 			if countTotalSteps%1000==0:
 				updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
 				lossAverages=np.empty([0])
 				print(countTotalSteps)
 
+
+			phi=dataSet.phi(lastState)
+			action=agentTF.getAction(phi, epsilon)
+			#action=userAction()
 			eC.unpause()
-			state,reward=dP.getStateReward()
-			phi=dataSet.phi(state)
+			dP.action(action)
+			state=dP.getState()
+			reward=dP.getReward()
 			#print('phi: ', phi)
-			action=network.choose_action(phi, epsilon)
 			#action=np.random.randint(config.ACTION_SIZE)
 			#action=userAction()
 			#time.sleep(0.5)
-			dP.action(action)
-			#print('state: ', state)
-			#print('reward: ', reward)
-			#print('action: ', action)
 			
 			# Check every 100 steps if is Flipped and Goal was reached
 			if countSteps % 5 == 0:
 				if dP.isGoal:
-					print('The goal was reached after', countSteps, 'steps' )
+					print('The goal was reached in ', countSteps, ' steps')
 					countSteps = 1
 					eC.setRandomModelState(config.ROBOT_NAME)
 					eC.setRandomModelState('goal')
@@ -271,8 +229,7 @@ def main(epsilon_start, load_net_number):
 					eC.setRandomModelState(config.ROBOT_NAME)
 					reward-=1
 					print('Flipped!')
-			
-			reward-=0.01 # Reward that every step costs a little bit
+
 			# After NUM_STEPS the chance is over
 			if countSteps % config.NUM_STEPS == 0:
 				countSteps = 1
@@ -282,46 +239,49 @@ def main(epsilon_start, load_net_number):
 				print('Your chance is over! Try again ...')
 
 			eC.pause()
-			dataSet.addSample(state,
+
+			dataSet.addSample(lastState,
 							  action,
 							  reward,
+							  state,
 							  dP.isGoal)
-
+			
 			# Training
-			if countTotalSteps>config.REPLAY_START_SIZE:
-				loss=trainNetwork(dataSet, network, config.BATCH_SIZE)
+			if countTotalSteps>config.REPLAY_START_SIZE and countTotalSteps%5==0:
+				batchStates, batchActions, batchRewards, batchNextStates, batchTerminals= \
+		            dataSet.randomBatch(config.BATCH_SIZE)
+				loss = agentTF.train(batchStates, batchActions, batchRewards, batchNextStates, batchTerminals)
 				#print('Loss', loss)
 	            # count How many trainings had been done
 				batchCount+=1
 	            # add loss to lossAverages
 				lossAverages=np.append(lossAverages, loss)
 
+			
 			#Update Epsilon save dataSet, network
 			if countTotalSteps % config.SIZE_EPOCH==0:
 		        # Number of Epochs
 				epochCount+=1
-		      
-		        # update Learning File
-		        #updateLearningFile()
 		      
 		        # Update Epsilon
 				if (epsilon - epsilonRate) < config.EPSILON_MIN:
 					quit=True
 				epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
 				print('Epsilon updated to: ', epsilon)
-				saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
-				saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 				
+				agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
+				saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+			lastState=state
 			countTotalSteps+=1
 			countSteps+=1
-
+	
 	except rospy.exceptions.ROSException:
-		saveNetwork(config.DATA_FOLDER, countTotalSteps, network) 
+		agentTF.save_model( countTotalSteps, config.DATA_FOLDER)
 		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
+		agentTF.close()
 		eC.close()
 		time.sleep(10)
 		main(epsilon, countTotalSteps)
-
 
 if __name__ == '__main__':
 	main(1., 0)

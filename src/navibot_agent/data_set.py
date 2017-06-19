@@ -2,7 +2,9 @@
 construct randomly selected batches of phi's from the stored history
 """
 
-import numpy, theano, time
+import numpy as np
+import time
+import tensorflow as tf
 
 class DataSet(object): 
     def __init__(self, stateSize, maxSteps, phiLength, rng):
@@ -11,7 +13,7 @@ class DataSet(object):
         stateSize - number of parameters in state
         maxSteps - number of time steps to store
         phiLength - number of values to concatenate into a state
-        rng - initialized numpy random number generator, used to
+        rng - initialized np random number generator, used to
         choose random minibatches
         '''
         self.stateSize=stateSize
@@ -20,18 +22,20 @@ class DataSet(object):
         self.rng=rng
 
         # Allocate circular buffers and indices
-        self.states=numpy.zeros((self.maxSteps, self.stateSize),
-                                dtype=theano.config.floatX)
-        self.actions=numpy.zeros(self.maxSteps, dtype='int32')
-        self.rewards=numpy.zeros(self.maxSteps, 
-                                dtype=theano.config.floatX)
-        self.terminal=numpy.zeros(self.maxSteps, dtype='bool')
+        self.states=np.zeros((self.maxSteps, self.stateSize),
+                                dtype=np.float32)
+        self.actions=np.zeros(self.maxSteps, dtype='int32')
+        self.rewards=np.zeros(self.maxSteps, 
+                                dtype=np.float32)
+        self.nextStates=np.zeros((self.maxSteps, self.stateSize),
+                                dtype=np.float32)
+        self.terminal=np.zeros(self.maxSteps, dtype='bool')
 
         self.bottom=0
         self.top=0
         self.size=0
 
-    def addSample(self, state, action, reward, terminal):
+    def addSample(self, state, action, reward, nextState, terminal):
         """ Add a  time step record
         Arguments:
             state - observed state
@@ -43,6 +47,7 @@ class DataSet(object):
         self.states[self.top]=state
         self.actions[self.top]=action
         self.rewards[self.top]=reward
+        self.nextStates[self.top]=nextState
         self.terminal[self.top]=terminal
 
         if self.size==self.maxSteps:
@@ -57,32 +62,36 @@ class DataSet(object):
 
     def lastPhi(self):
         """Return the most recent phi (sequence of image frames)"""
-        indexes=numpy.arange(self.top-self.phiLength, self.top)
+        indexes=np.arange(self.top-self.phiLength, self.top)
         return self.states.take(indexes, axis=0, mode='wrap')
 
     def phi(self, state):
         """Return a phi (sequence of states), using the last phi length - 1,
         plus state.
         """
-        indexes=numpy.arange(self.top-self.phiLength+1, self.top)
-        phi=numpy.empty((self.phiLength, self.stateSize), 
-                        dtype=theano.config.floatX)
+        indexes=np.arange(self.top-self.phiLength+1, self.top)
+        phi=np.empty((self.phiLength, self.stateSize), 
+                        dtype=np.float32)
         phi[0:self.phiLength-1]=self.states.take(indexes, axis=0, mode='wrap')
         phi[-1]=state
-        return phi
+        return phi.reshape(1, self.stateSize*self.phiLength)
 
     def randomBatch(self, batchSize):
         """ Return cossreponding states, action, rewards, terminal status for
         batchSize. Randomly chosen state transitions
         """
         #Allocate space for the response
-        states=numpy.zeros((batchSize,
-                            self.phiLength+1,
+        states=np.zeros((batchSize,
+                            self.phiLength,
                             self.stateSize),
-                           dtype=theano.config.floatX)
-        actions=numpy.zeros((batchSize,1),dtype='int32')
-        rewards=numpy.zeros((batchSize,1),dtype=theano.config.floatX)
-        terminal=numpy.zeros((batchSize,1),dtype='bool')
+                           dtype=np.float32)
+        actions=np.zeros((batchSize,1),dtype='int32')
+        rewards=np.zeros((batchSize,1),dtype=np.float32)
+        nextStates=np.zeros((batchSize,
+                            self.phiLength,
+                            self.stateSize),
+                           dtype=np.float32)
+        terminal=np.zeros((batchSize,1),dtype='bool')
 
         count=0
         while count<batchSize:
@@ -91,7 +100,7 @@ class DataSet(object):
                                    self.bottom+self.size-self.phiLength)
             # Both the before and after states contain phiLength
             # frames, overlapping except for the first and last
-            allIndices=numpy.arange(index,index+self.phiLength+1)
+            allIndices=np.arange(index,index+self.phiLength)
             endIndex=index+self.phiLength-1
             
             # Check that the initial state corresponds entirely to a
@@ -102,33 +111,34 @@ class DataSet(object):
             # frame of a new episode, which the Q learner recognizes and
             # handles correctly during training by zeroing the
             # discounted future reward estimate.
-            if numpy.any(self.terminal.take(allIndices[0:-2], mode='wrap')):
-                continue
+            #if np.any(self.terminal.take(allIndices[0:-2], mode='wrap')):
+            #    continue
 
             # Add the state transition to the response.
             states[count] = self.states.take(allIndices, axis=0, mode='wrap')
             actions[count] = self.actions.take(endIndex, mode='wrap')
             rewards[count] = self.rewards.take(endIndex, mode='wrap')
+            nextStates[count] = self.nextStates.take(allIndices, axis=0, mode='wrap')
             terminal[count] = self.terminal.take(endIndex, mode='wrap')
             count += 1
 
-        return states, actions, rewards, terminal
+        return states.reshape(batchSize, self.stateSize*self.phiLength), actions.reshape(batchSize, ), rewards.reshape(batchSize, ), nextStates.reshape(batchSize, self.stateSize*self.phiLength), terminal.reshape(batchSize, )
 
 
 # TESTING CODE BELOW THIS POINT...
 
 def simple_tests():
     print('...Starting Simple Test')
-    numpy.random.seed(222)
+    np.random.seed(222)
     dataset = DataSet(stateSize=3,
                       maxSteps=6, phiLength=4,
-                      rng=numpy.random.RandomState(42))
+                      rng=np.random.RandomState(42))
     for i in range(10):
-        state = numpy.random.random(3)*480
-        action = numpy.random.randint(3)
-        reward = numpy.random.random()
+        state = np.random.random(3)*480
+        action = np.random.randint(3)
+        reward = np.random.random()
         terminal = False
-        if numpy.random.random() < .05:
+        if np.random.random() < .05:
             terminal = True
         print('state', state)
         dataset.addSample(state, action, reward, terminal)
@@ -147,14 +157,14 @@ def speed_tests():
     print('...Starting Speed Test')
     dataset = DataSet(stateSize=3,
                       maxSteps=20000, phiLength=4,
-                      rng=numpy.random.RandomState(42))
-    state = numpy.random.random(3)*480
-    action = numpy.random.randint(3)
-    reward = numpy.random.random()
+                      rng=np.random.RandomState(42))
+    state = np.random.random(3)*480
+    action = np.random.randint(3)
+    reward = np.random.random()
     start = time.time()
     for i in range(100000):
         terminal = False
-        if numpy.random.random() < .05:
+        if np.random.random() < .05:
             terminal = True
         dataset.addSample(state, action, reward, terminal)
     print("samples per second: ", 100000 / (time.time() - start))
@@ -171,11 +181,11 @@ def trivial_tests():
     print('...Starting Trivial Tests')
     dataset = DataSet(stateSize=1,
                       maxSteps=3, phiLength=2,
-                      rng=numpy.random.RandomState(42))
+                      rng=np.random.RandomState(42))
 
-    state1 = numpy.array([1], dtype=theano.config.floatX)
-    state2 = numpy.array([2], dtype=theano.config.floatX)
-    state3 = numpy.array([3], dtype=theano.config.floatX)
+    state1 = np.array([1], dtype=np.float32)
+    state2 = np.array([2], dtype=np.float32)
+    state3 = np.array([3], dtype=np.float32)
 
     dataset.addSample(state1, 1, 1, False)
     dataset.addSample(state2, 2, 2, False)
@@ -188,20 +198,20 @@ def max_size_tests():
     print('...Starting Max Size Tests')
     dataset1 = DataSet(stateSize=3,
                       maxSteps=10, phiLength=4,
-                      rng=numpy.random.RandomState(42))
+                      rng=np.random.RandomState(42))
     dataset2 = DataSet(stateSize=3,
                       maxSteps=1000, phiLength=4,
-                      rng=numpy.random.RandomState(42))
+                      rng=np.random.RandomState(42))
     for i in range(100):
-        state = numpy.random.random(3)*480
-        action = numpy.random.randint(4)
-        reward = numpy.random.random()
+        state = np.random.random(3)*480
+        action = np.random.randint(4)
+        reward = np.random.random()
         terminal = False
-        if numpy.random.random() < .05:
+        if np.random.random() < .05:
             terminal = True
         dataset1.addSample(state, action, reward, terminal)
         dataset2.addSample(state, action, reward, terminal)
-        numpy.testing.assert_array_almost_equal(dataset1.lastPhi(),
+        np.testing.assert_array_almost_equal(dataset1.lastPhi(),
                                              dataset2.lastPhi())
         print("Max Size Test passed")
 
@@ -211,13 +221,13 @@ def test_memory_usage_ok():
     import memory_profiler
     dataset = DataSet(stateSize=3,
                       maxSteps=100000, phiLength=4,
-                      rng=numpy.random.RandomState(42))
+                      rng=np.random.RandomState(42))
     last = time.time()
 
     for i in range(1000000000):
         if (i % 100000) == 0:
             print('i: ', i)
-        dataset.addSample(numpy.random.random(3)*480, 1, 1, False)
+        dataset.addSample(np.random.random(3)*480, 1, 1, False)
         if i > 200000:
             states, actions, rewards, terminals = \
                                         dataset.randomBatch(32)
