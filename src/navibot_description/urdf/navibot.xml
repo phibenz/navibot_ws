@@ -340,7 +340,7 @@
 
   <joint name="hokuyo_joint" type="fixed">
     <axis xyz="0 1 0" />
-    <origin xyz=".2 0 0" rpy="0 0 0"/>
+    <origin xyz=".15 0 0.075" rpy="0 0 0"/>
     <parent link="chassis"/>
     <child link="hokuyo"/>
   </joint>
@@ -350,14 +350,14 @@
     <collision name="hokuyo_collision">
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <box size=".05 .05 .05"/>
       </geometry>
     </collision>
 
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.05"/>
+        <box size=".05 .05 .05"/>
       </geometry>
     </visual>
 
@@ -467,6 +467,7 @@
     </sensor>
   </gazebo>
 
+
   <!--gazebo reference="camera">
     <material>Gazebo/Black</material>
     <sensor type="camera" name="camera1">
@@ -535,6 +536,8 @@
         <frameName>hokuyo</frameName>
       </plugin>
     </sensor>
+
+
 
     <!-- contact sensor -->
     <!--sensor type="contact" name="hokuyo_contact_sensor">

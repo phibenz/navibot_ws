@@ -76,9 +76,6 @@ class dataProcessor:
 		robotPosition,robotOrientation=self.getRobotPosOri()
 		goalPosition=self.getGoalPos()
 
-
-
-
 		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2) # hypothenuse
 		state[0,7]=distance/np.sqrt(200)
 		
@@ -136,6 +133,9 @@ class dataProcessor:
 			raise rospy.exceptions.ROSException
 		goalPosition=self.getGoalPos()
 		robotPosition,robotOrientation=self.getRobotPosOri()
+		#if len(frontBump.states)>0:
+		#	print('Front Bumper collided')
+		#	collisionReward = -1
 		if len(np.where([leftWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(leftWheelBump.states))])[0])>0:
 			#print('Left wheel collided with ', leftWheelBump.states[i].collision2_name.split('::')[0])
 			collisionReward = -1
@@ -149,7 +149,7 @@ class dataProcessor:
 			collisionReward = 0
 
 		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2)
-		distanceReward=-distance/np.sqrt(100)
+		distanceReward=-distance/np.sqrt(200)
 
 		quaternion=(navibot_tf.transforms[0].transform.rotation.x,
 					navibot_tf.transforms[0].transform.rotation.y,
@@ -169,31 +169,29 @@ class dataProcessor:
 			angle=np.arcsin(oppo/distance)
 		#print('Robot2Goal', angle*180/np.pi)
 		#print('difference', (angle-euler[2])*180/np.pi)
-		angleReward=-abs(angle-euler[2])/(2*np.pi)
+		angleReward=-abs(angle-euler[2])/(4*np.pi)
 		#print('angleReward', angleReward)
-
-		oneStepReward=-0.01 # every step costs 0.01
 
 		goalReward=0
 		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
 			print('leftWheelBumber GOAL!')
 			collisionReward = 0
-			goalReward = 1
+			goalReward = 2
 			self.isGoal=True
 		elif len([rightWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(rightWheelBump.states))])>0:
 			print('rightWheelBump GOAL!')
 			collisionReward = 0
-			goalReward = 1
+			goalReward = 2
 			self.isGoal=True
 		elif len(np.where([chassisBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(chassisBump.states))])[0])>0:
 			print('chassis GOAL!')
 			collisionReward = 0
-			goalReward = 1
+			goalReward = 2
 			self.isGoal=True
 		else:
 			goalReward=0
 
-		return collisionReward + distanceReward + goalReward + angleReward + oneStepReward
+		return collisionReward + distanceReward + goalReward + angleReward 
 
 	def isFlipped(self):
 		_,orientation=self.getRobotPosOri()

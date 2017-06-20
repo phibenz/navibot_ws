@@ -82,7 +82,7 @@ class environmentControl:
 		if roslaunch_count > 0:
 		    os.system("killall -9 roslaunch")
 
-		time.sleep(1)
+		time.sleep(5)
 		'''
 		if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
 		    print("I wait...")
@@ -124,7 +124,7 @@ class environmentControl:
 		goal_pose = Pose()
 		goal_pose.position.x= goalPos[0]
 		goal_pose.position.y= goalPos[1]
-		goal_pose.position.z=2.0
+		goal_pose.position.z=2.01
 
 		with open(self.pathGoal, 'r') as f:
 			data=f.read()
@@ -142,7 +142,7 @@ class environmentControl:
 
 			state.pose.position.x = goalPos[0]
 			state.pose.position.y = goalPos[1]
-			state.pose.position.z = 2.
+			state.pose.position.z = 2.01
 
 		elif name == 'navibot':
 			idx=np.random.randint(len(self.spawnList)-1)

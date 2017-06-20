@@ -49,7 +49,7 @@ def openLearningFile(dataFolder):
 
 def updateLearningFile(dataFolder, lossAverages, epochCount):
 	learningFile=open(dataFolder + '/LearningFile/' + \
-                        'learningTF.csv','a')
+                        'learning.csv','a')
 	out="{},{}\n".format(np.mean(lossAverages), epochCount)
 	learningFile.write(out)
 	learningFile.flush()
@@ -80,7 +80,7 @@ class Configuration:
     REPLAY_MEMORY_SIZE= 10000000
     RNG= np.random.RandomState()
     PHI_LENGTH=4
-    STATE_SIZE=11
+    STATE_SIZE=9
     ACTION_SIZE=4
     BATCH_SIZE=32
     LOAD_NET_NUMBER= 0
@@ -112,14 +112,20 @@ class Configuration:
     NUM_STEPS=1000
 
     UPDATE_TIME=0.5
-    SPEED_UP=50 # 
+    SPEED_UP=10 # 
 
-def main(epsilon_start, load_net_number):
+def main():
 	sys.setrecursionlimit(2000)
 
 	config=Configuration()
-	config.EPSILON_START=epsilon_start
-	config.LOAD_NET_NUMBER=load_net_number
+
+	with open(config.DATA_FOLDER+'/config.txt', 'r') as f:
+		configFile=f.read().split(',')
+
+	print('Parameters', configFile)
+	config.EPSILON_START=float(configFile[0])
+	config.LOAD_NET_NUMBER=int(float(configFile[1]))
+
 
 	agentTF=AgentTF(config.STATE_SIZE, 
 					config.PHI_LENGTH, 
@@ -195,7 +201,8 @@ def main(epsilon_start, load_net_number):
 			countTotalSteps+=1
 			countSteps+=1
 			lastState=state
-
+		if config.EPSILON_START<0.09:
+			quit=True
 		while not quit:
 			if countTotalSteps%1000==0:
 				updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
@@ -216,19 +223,18 @@ def main(epsilon_start, load_net_number):
 			#time.sleep(0.5)
 			
 			# Check every 100 steps if is Flipped and Goal was reached
-			if countSteps % 5 == 0:
-				if dP.isGoal:
-					print('The goal was reached in ', countSteps, ' steps')
-					countSteps = 1
-					eC.setRandomModelState(config.ROBOT_NAME)
-					eC.setRandomModelState('goal')
-					dP.isGoal=False
+			
+			if dP.isGoal:
+				print('The goal was reached in ', countSteps, ' steps')
+				countSteps = 1
+				eC.setRandomModelState(config.ROBOT_NAME)
+				eC.setRandomModelState('goal')
+				dP.isGoal=False
 					
-
-				if dP.isFlipped():
-					eC.setRandomModelState(config.ROBOT_NAME)
-					reward-=1
-					print('Flipped!')
+			if countSteps % 5 == 0  and dP.isFlipped():
+				eC.setRandomModelState(config.ROBOT_NAME)
+				reward-=1
+				print('Flipped!')
 
 			# After NUM_STEPS the chance is over
 			if countSteps % config.NUM_STEPS == 0:
@@ -280,8 +286,10 @@ def main(epsilon_start, load_net_number):
 		saveDataSet(config.DATA_FOLDER, countTotalSteps, dataSet)
 		agentTF.close()
 		eC.close()
-		time.sleep(10)
-		main(epsilon, countTotalSteps)
+
+		with open(config.DATA_FOLDER+'/config.txt', 'w') as f:
+			out="{},{}".format(epsilon, countTotalSteps)
+			f.write(out)
 
 if __name__ == '__main__':
-	main(1., 0)
+	main()
