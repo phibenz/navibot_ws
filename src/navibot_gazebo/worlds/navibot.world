@@ -14,7 +14,7 @@
     </include>
 
     <include>
-      <uri>model://arena_simple</uri>
+      <uri>model://arena_middle</uri>
     </include>
 
     <!-- Focus camera on tall pendulum -->
