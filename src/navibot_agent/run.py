@@ -191,8 +191,7 @@ def main():
 			action=np.random.randint(config.ACTION_SIZE)
 			dP.action(action)
 			
-			state=dP.getState()
-			reward=dP.getReward()
+			state,reward=dP.getStateReward()
 			dataSet.addSample(lastState,
 							  action,
 							  reward,
@@ -215,15 +214,9 @@ def main():
 			#action=userAction()
 			eC.unpause()
 			dP.action(action)
-			state=dP.getState()
-			reward=dP.getReward()
-			#print('phi: ', phi)
-			#action=np.random.randint(config.ACTION_SIZE)
-			#action=userAction()
-			#time.sleep(0.5)
-			
-			# Check every 100 steps if is Flipped and Goal was reached
-			
+			state,reward=dP.getStateReward()
+			eC.pause()
+
 			if dP.isGoal:
 				print('The goal was reached in ', countSteps, ' steps')
 				countSteps = 1
@@ -231,10 +224,9 @@ def main():
 				eC.setRandomModelState('goal')
 				dP.isGoal=False
 					
-			if countSteps % 5 == 0  and dP.isFlipped():
+			if dP.flipped:
 				eC.setRandomModelState(config.ROBOT_NAME)
-				reward-=1
-				print('Flipped!')
+				dP.flipped=False
 
 			# After NUM_STEPS the chance is over
 			if countSteps % config.NUM_STEPS == 0:
@@ -244,7 +236,7 @@ def main():
 				eC.setRandomModelState('goal')
 				print('Your chance is over! Try again ...')
 
-			eC.pause()
+			#print(reward)
 
 			dataSet.addSample(lastState,
 							  action,

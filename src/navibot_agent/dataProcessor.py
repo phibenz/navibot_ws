@@ -24,6 +24,7 @@ class dataProcessor:
 
 		self.phiLength=phiLength
 		self.isGoal=False
+		self.flipped=False
 
 		self.stateSize=stateSize # TODO maybe as input
 		self.numSensorVal=numSensorVal
@@ -62,10 +63,13 @@ class dataProcessor:
 			raise ValueError('Goal not found')
 		return robotIndex, goalIndex
 
-	def getState(self):
+	def getStateReward(self):
 		time.sleep(self.update_time/self.speed_up)
 		state=np.zeros((1, self.stateSize))
 		try:
+			leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState, timeout=5)
+			rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState, timeout=5)
+			chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState, timeout=5)
 			laserData=np.array(rospy.wait_for_message("/navibot/laser/scan", LaserScan, timeout=5).ranges)
 			navibot_tf=rospy.wait_for_message("/tf", TFMessage, timeout=5)
 		except:
@@ -96,9 +100,66 @@ class dataProcessor:
 		else:
 			angle=np.arcsin(oppo/distance)
 		#print('Robot2Goal', angle*180/np.pi)
-		#print('difference', (angle-euler[2])*180/np.pi)
-		state[0,8]=angle-euler[2]/(2*np.pi) #Orientation difference 
-		return state
+
+		# Orientation difference
+		if abs(angle-euler[2])>np.pi:
+			state[0,8]=(-angle-euler[2])/(np.pi)
+		else:
+			state[0,8]=(angle-euler[2])/(np.pi)
+
+
+		########### REWARD ###############
+
+		if len(np.where([leftWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(leftWheelBump.states))])[0])>0:
+			#print('Left wheel collided with ', leftWheelBump.states[i].collision2_name.split('::')[0])
+			collisionReward = -1
+		elif len(np.where([rightWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(rightWheelBump.states))])[0])>0:
+			#print('Right wheel collided with', rightWheelBump.states[i].collision2_name.split('::')[0])
+			collisionReward = -1
+		elif len(chassisBump.states)>0:
+			#print('Chassis Bumper collided')
+			collisionReward = -1
+		else:
+			collisionReward = 0
+
+		distanceReward=-distance/np.sqrt(200)
+
+		if abs(angle-euler[2])>np.pi:
+			angleReward=-abs(-angle-euler[2])/(np.pi)
+		else:
+			angleReward=-abs(angle-euler[2])/(np.pi)
+		#print('angleReward', angleReward)
+
+		goalReward=0
+		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
+			print('leftWheelBumber GOAL!')
+			collisionReward = 0
+			goalReward = 2
+			self.isGoal=True
+		elif len([rightWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(rightWheelBump.states))])>0:
+			print('rightWheelBump GOAL!')
+			collisionReward = 0
+			goalReward = 2
+			self.isGoal=True
+		elif len(np.where([chassisBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(chassisBump.states))])[0])>0:
+			print('chassis GOAL!')
+			collisionReward = 0
+			goalReward = 2
+			self.isGoal=True
+		else:
+			goalReward=0
+
+		if robotOrientation[0]>0.5 or robotOrientation[0]<-0.5 or \
+		   robotOrientation[1]>0.5 or robotOrientation[1]<-0.5:
+			print('Flipped!')
+			flippedReward=-1
+			self.flipped=True
+		else:
+			flippedReward=0
+
+		reward= collisionReward + distanceReward + goalReward + angleReward + flippedReward
+
+		return state, reward
 
 	def getRobotPosOri(self):
 		try:
@@ -122,84 +183,6 @@ class dataProcessor:
 
 	def isPaused(self):
 		return self.envC.physicsProp_client.call().pause
-
-	def getReward(self):
-		try:
-			leftWheelBump=rospy.wait_for_message("/navibot/left_wheel_bumper", ContactsState, timeout=5)
-			rightWheelBump=rospy.wait_for_message("/navibot/right_wheel_bumper", ContactsState, timeout=5)
-			chassisBump=rospy.wait_for_message("/navibot/chassis_bumper", ContactsState, timeout=5)
-			navibot_tf=rospy.wait_for_message("/tf", TFMessage, timeout=5)
-		except:
-			raise rospy.exceptions.ROSException
-		goalPosition=self.getGoalPos()
-		robotPosition,robotOrientation=self.getRobotPosOri()
-		#if len(frontBump.states)>0:
-		#	print('Front Bumper collided')
-		#	collisionReward = -1
-		if len(np.where([leftWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(leftWheelBump.states))])[0])>0:
-			#print('Left wheel collided with ', leftWheelBump.states[i].collision2_name.split('::')[0])
-			collisionReward = -1
-		elif len(np.where([rightWheelBump.states[i].collision2_name.split('::')[0] != 'ground_plane' for i in range(len(rightWheelBump.states))])[0])>0:
-			#print('Right wheel collided with', rightWheelBump.states[i].collision2_name.split('::')[0])
-			collisionReward = -1
-		elif len(chassisBump.states)>0:
-			#print('Chassis Bumper collided')
-			collisionReward = -1
-		else:
-			collisionReward = 0
-
-		distance=np.sqrt((robotPosition[0]-goalPosition[0])**2+(robotPosition[1]-goalPosition[1])**2)
-		distanceReward=-distance/np.sqrt(200)
-
-		quaternion=(navibot_tf.transforms[0].transform.rotation.x,
-					navibot_tf.transforms[0].transform.rotation.y,
-					navibot_tf.transforms[0].transform.rotation.z,
-					navibot_tf.transforms[0].transform.rotation.w)
-		euler= tf.transformations.euler_from_quaternion(quaternion)
-		euler=np.array(euler)
-		#print(euler*180/np.pi)
-		#print('Robot2World', euler[2]*180/np.pi)
-		oppo=goalPosition[1]-robotPosition[1]
-		adja=goalPosition[0]-robotPosition[0]
-		if adja<0 and oppo<0:
-			angle=-np.pi-np.arcsin(oppo/distance)
-		elif adja<0 and oppo>0:
-			angle=np.pi-np.arcsin(oppo/distance)
-		else:
-			angle=np.arcsin(oppo/distance)
-		#print('Robot2Goal', angle*180/np.pi)
-		#print('difference', (angle-euler[2])*180/np.pi)
-		angleReward=-abs(angle-euler[2])/(4*np.pi)
-		#print('angleReward', angleReward)
-
-		goalReward=0
-		if len([leftWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(leftWheelBump.states))])>0:
-			print('leftWheelBumber GOAL!')
-			collisionReward = 0
-			goalReward = 2
-			self.isGoal=True
-		elif len([rightWheelBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(rightWheelBump.states))])>0:
-			print('rightWheelBump GOAL!')
-			collisionReward = 0
-			goalReward = 2
-			self.isGoal=True
-		elif len(np.where([chassisBump.states[i].collision2_name.split('::')[0] == 'goal' for i in range(len(chassisBump.states))])[0])>0:
-			print('chassis GOAL!')
-			collisionReward = 0
-			goalReward = 2
-			self.isGoal=True
-		else:
-			goalReward=0
-
-		return collisionReward + distanceReward + goalReward + angleReward 
-
-	def isFlipped(self):
-		_,orientation=self.getRobotPosOri()
-		if orientation[0]>0.5 or orientation[0]<-0.5 or \
-		   orientation[1]>0.5 or orientation[1]<-0.5:
-			return True
-		else:
-			return False
 
 	def action(self, actionIdx):
 		'''
