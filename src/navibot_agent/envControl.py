@@ -124,7 +124,7 @@ class environmentControl:
 		goal_pose = Pose()
 		goal_pose.position.x= goalPos[0]
 		goal_pose.position.y= goalPos[1]
-		goal_pose.position.z=2.01
+		goal_pose.position.z=2.001
 
 		with open(self.pathGoal, 'r') as f:
 			data=f.read()
@@ -142,7 +142,7 @@ class environmentControl:
 
 			state.pose.position.x = goalPos[0]
 			state.pose.position.y = goalPos[1]
-			state.pose.position.z = 2.01
+			state.pose.position.z = 2.001
 
 		elif name == 'navibot':
 			idx=np.random.randint(len(self.spawnList)-1)

@@ -86,7 +86,7 @@ class Configuration:
     LOAD_NET_NUMBER= 0
     SIZE_EPOCH=10000 #10000
     REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-    HIDDEN_LAYERS=[100, 100, 100]
+    HIDDEN_LAYERS=[100, 100, 100, 100]
     TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
     GAMMA=0.99
 
@@ -200,14 +200,13 @@ def main():
 			countTotalSteps+=1
 			countSteps+=1
 			lastState=state
-		if config.EPSILON_START<0.09:
+		if config.EPSILON_START<-0:
 			quit=True
 		while not quit:
 			if countTotalSteps%1000==0:
 				updateLearningFile(config.DATA_FOLDER, lossAverages, countTotalSteps)
 				lossAverages=np.empty([0])
 				print(countTotalSteps)
-
 
 			phi=dataSet.phi(lastState)
 			action=agentTF.getAction(phi, epsilon)
@@ -262,7 +261,7 @@ def main():
 				epochCount+=1
 		      
 		        # Update Epsilon
-				if (epsilon - epsilonRate) < config.EPSILON_MIN:
+				if (epsilon - epsilonRate) < config.EPSILON_MIN-0.01:
 					quit=True
 				epsilon=max(epsilon - epsilonRate, config.EPSILON_MIN)        
 				print('Epsilon updated to: ', epsilon)

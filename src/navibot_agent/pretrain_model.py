@@ -1,5 +1,5 @@
-from AgentTF import *
-from data_setTF import DataSet
+from Agent import *
+from data_set import DataSet
 import time, os, pickle
 import numpy as np
 import sys
@@ -10,7 +10,7 @@ import rospy
 def loadDataSet(dataFolder, numRounds):
     #TODO: Add exceptions for files which are nonexistent
     print('...Reading DataSet from: \n' + \
-        dataFolder + '/DataSets/' + 'DataSetTF_' + \
+        dataFolder + '/DataSets/' + 'DataSet_' + \
         str(numRounds) + '.pkl')
     dataFile=open(dataFolder + '/DataSets/' + 'DataSetTF_'+ \
                 str(numRounds) + '.pkl', 'rb')
@@ -26,13 +26,13 @@ EPSILON_DECAY=0.05
 REPLAY_MEMORY_SIZE= 10000000
 RNG= np.random.RandomState()
 PHI_LENGTH=4
-STATE_SIZE=11
+STATE_SIZE=9
 ACTION_SIZE=4
 BATCH_SIZE=32
 LOAD_NET_NUMBER= 0 #100000000 #50000000 
 SIZE_EPOCH=5000 #10000
 REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-HIDDEN_LAYERS=[1024, 1024, 1024, 1024]
+HIDDEN_LAYERS=[256, 256, 256, 256]
 TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
 GAMMA=0.99
 
@@ -42,7 +42,7 @@ GAMMA=0.99
 home=os.path.expanduser("~")
 DATA_FOLDER = home + '/navibot_ws/src/navibot_agent'
 
-dataSet=loadDataSet(DATA_FOLDER, 175000)
+dataSet=loadDataSet(DATA_FOLDER, 51467)
 
 agentTF=AgentTF(STATE_SIZE, 
                 PHI_LENGTH, 
@@ -55,7 +55,7 @@ agentTF=AgentTF(STATE_SIZE,
 
 lossAverages=np.empty([0])
 
-for i in range(175000):
+for i in range(1000000):
     if i % 1000==0:
         print('loss: ', np.mean(lossAverages))
         lossAverages=np.empty([0])

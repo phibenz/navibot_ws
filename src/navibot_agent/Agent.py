@@ -110,23 +110,29 @@ class DQN():
                 'W1': self.init_weight("W1", [state_size, hiddens[0]]),
                 'W2': self.init_weight("W2", [hiddens[0], hiddens[1]]),
                 'W3': self.init_weight("W3", [hiddens[1], hiddens[2]]),
-                'AW': self.init_weight("AW", [hiddens[2]//2, action_size]),
-                'VM': self.init_weight("VM", [hiddens[2]//2, 1])
+                'W4': self.init_weight("W4", [hiddens[2], hiddens[3]]),
+                #'W5': self.init_weight("W5", [hiddens[3], hiddens[4]]),
+                'AW': self.init_weight("AW", [hiddens[3]//2, action_size]),
+                'VM': self.init_weight("VM", [hiddens[3]//2, 1])
             }
 
             self.b = {
                 'b1': self.init_bias("b1", hiddens[0]),
                 'b2': self.init_bias("b2", hiddens[1]),
-                'b3': self.init_bias("b3", hiddens[2])
+                'b3': self.init_bias("b3", hiddens[2]),
+                'b4': self.init_bias("b4", hiddens[3]),
+                #'b5': self.init_bias("b5", hiddens[4])
             }
 
             # Layers
             self.hidden1 = tf.nn.relu(tf.add(tf.matmul(self.input, self.W['W1']), self.b['b1']))
             self.hidden2 = tf.nn.relu(tf.add(tf.matmul(self.hidden1, self.W['W2']), self.b['b2']))
             self.hidden3 = tf.nn.relu(tf.add(tf.matmul(self.hidden2, self.W['W3']), self.b['b3']))
+            self.hidden4 = tf.nn.relu(tf.add(tf.matmul(self.hidden3, self.W['W4']), self.b['b4']))
+            #self.hidden5 = tf.nn.relu(tf.add(tf.matmul(self.hidden4, self.W['W5']), self.b['b5']))
 
             # Compute the Advantage, Value, and total Q value
-            self.A, self.V = tf.split(self.hidden3, 2, 1)
+            self.A, self.V = tf.split(self.hidden4, 2, 1)
             self.Advantage = tf.matmul(self.A, self.W['AW'])
             self.Value = tf.matmul(self.V, self.W['VM'])
             self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keep_dims=True))
