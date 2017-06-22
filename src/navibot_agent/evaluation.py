@@ -31,10 +31,10 @@ PHI_LENGTH=4
 STATE_SIZE=9
 ACTION_SIZE=4
 BATCH_SIZE=32
-LOAD_NET_NUMBER= 190000 #100000000 #50000000 
+LOAD_NET_NUMBER= 189377 #100000000 #50000000 
 SIZE_EPOCH=5000 #10000
 REPLAY_START_SIZE=100 #SIZE_EPOCH/2
-HIDDEN_LAYERS=[100, 100, 100, 100]
+HIDDEN_LAYERS=[512, 512, 512, 512, 512]
 TAU = 0.001 # Porcentage that determines how much are parameters of mainQN net modified by targetQN
 GAMMA=0.99
 
@@ -66,15 +66,15 @@ SPEED_UP=10 #
 # Evaluation Parameters:
 #------------------------
 
-TRAINING_NEW_NETWORK=False
+TRAINING_NEW_NETWORK=True
 EVAL_OLD_NETWORK=False
 STEPS_FOR_NUM_GAMES=True
 NUM_GAMES=100
 
 SKIP_STEP=5     # Training steps skipped in run.py 
-TRAINING_ITER=LOAD_NET_NUMBER/SKIP_STEP
+TRAINING_ITER=70000#LOAD_NET_NUMBER/SKIP_STEP
 AVERAGES_OVER_STEPS=1000 # Number of Steps over which 
-ENVIRONMENT='Empty'
+ENVIRONMENT='Center Block'
 
 sys.setrecursionlimit(2000)
 
@@ -94,7 +94,7 @@ meanLosses=np.empty([0])
 iterations=np.empty([0])
 
 if TRAINING_NEW_NETWORK:
-    for i in range(1,TRAINING_ITER):
+    for i in range(1,TRAINING_ITER+1):
         if i % AVERAGES_OVER_STEPS==0:
             
             print('loss: ', np.mean(losses))
@@ -102,7 +102,8 @@ if TRAINING_NEW_NETWORK:
             iterations=np.append(iterations, i*SKIP_STEP)
             meanLosses=np.append(meanLosses, np.mean(losses))
             losses=np.empty([0])
-
+            agentTF.save_model( i*SKIP_STEP, DATA_FOLDER+'/Evaluation')
+        
         batchStates, batchActions, batchRewards, batchNextStates, batchTerminals= \
                         dataSet.randomBatch(BATCH_SIZE)
         loss = agentTF.train(batchStates, batchActions, batchRewards, batchNextStates, batchTerminals)
@@ -120,7 +121,7 @@ if TRAINING_NEW_NETWORK:
     plt.savefig(DATA_FOLDER + '/Evaluation/LossAverages_' + str(ENVIRONMENT) + '.png')
 
 else : 
-    agentTF.restore_model(DATA_FOLDER+'/Evaluation')
+    agentTF.restore_model(DATA_FOLDER+'/Evaluation', 'model-5000.cptk')
 
 if EVAL_OLD_NETWORK:
     graph=np.loadtxt(open('LearningFile/learning.csv','rb'), delimiter=',', skiprows=2)
